@@ -70,9 +70,7 @@ fabric.properties
 # End of https://www.gitignore.io/api/pycharm
 
 # MNIST
-/mnist/minst
-/minst/minst_rot
-/mnist/raw_data
+mnist/*/
 
 # Model
 *.pt
