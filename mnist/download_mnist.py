@@ -80,14 +80,14 @@ if not os.path.isdir("mnist/test-images"):
      os.makedirs("mnist/test-images")
 
 # process train data
-with open("mnist/train-labels.csv", 'wb') as csvFile:
+with open("mnist/train-labels.csv", 'w') as csvFile:
     writer = csv.writer(csvFile, delimiter=',', quotechar='"')
     for i in range(len(train_data)):
         imsave("mnist/train-images/" + str(i) + ".jpg", train_data[i][:,:,0])
         writer.writerow(["train-images/" + str(i) + ".jpg", train_labels[i]])
 
 # repeat for test data
-with open("mnist/test-labels.csv", 'wb') as csvFile:
+with open("mnist/test-labels.csv", 'w') as csvFile:
     writer = csv.writer(csvFile, delimiter=',', quotechar='"')
     for i in range(len(test_data)):
         imsave("mnist/test-images/" + str(i) + ".jpg", test_data[i][:,:,0])

@@ -5,11 +5,11 @@ sys.path.append('../')
 from utils import getGrid, rotate_grid_2D
 
 def loadMnist(mode):
-    print 'Loading MNIST', mode, 'images'
+    print('Loading MNIST', mode, 'images')
     # Mode = 'train'/'test
-    mnist_folder = '/nr/user/andersuw/shared/datasets/mnist/mnist/'
+    mnist_folder = './mnist/'
 
-    with file(mnist_folder + mode + '-labels.csv') as f:
+    with open (mnist_folder + mode + '-labels.csv') as f:
         path_and_labels = f.readlines()
 
     samples = [];
@@ -68,7 +68,7 @@ def loadMnistRot():
         data = np.split(data, data.shape[2],2)
         lbls = np.split(lbls, lbls.shape[0],0)
 
-        return zip(data,lbls)
+        return list(zip(data,lbls))
 
     train = load_and_make_list('train')
     val = load_and_make_list('val')

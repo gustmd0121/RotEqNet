@@ -99,7 +99,7 @@ if __name__ == '__main__':
 
         true = []
         pred = []
-        for batch_no in xrange(len(dataset) // batch_size):
+        for batch_no in range(len(dataset) // batch_size):
             data, labels = getBatch(dataset, mode)
 
             #Run same sample with different orientations through network and average output
@@ -123,9 +123,9 @@ if __name__ == '__main__':
                         data = data.cuda(gpu_no)
 
                     if out is None:
-                        out = F.softmax(model(data))
+                        out = F.softmax(model(data),dim=1)
                     else:
-                        out += F.softmax(model(data))
+                        out += F.softmax(model(data),dim=1)
 
                 out /= len(rotations)
 
@@ -189,7 +189,7 @@ if __name__ == '__main__':
     train_set, val_set,  test_set = loadMnistRot()
 
     best_acc = 0
-    for epoch_no in range(90):
+    for epoch_no in range(5):
 
         #Random order for each epoch
         train_set_for_epoch = train_set[:] #Make a copy
@@ -197,7 +197,7 @@ if __name__ == '__main__':
 
         #Training
         net.train()
-        for batch_no in xrange(len(train_set)//batch_size):
+        for batch_no in range(len(train_set)//batch_size):
 
             # Train
             optimizer.zero_grad()
@@ -212,7 +212,7 @@ if __name__ == '__main__':
 
             #Print training-acc
             if batch_no%10 == 0:
-                print('Train', 'epoch:', epoch_no, ' batch:', batch_no, ' loss:', loss.data.cpu().numpy()[0], ' acc:', np.average((c == labels).data.cpu().numpy()))
+                print('Train', 'epoch:', epoch_no, ' batch:', batch_no, ' loss:', loss.data.cpu().numpy(), ' acc:', np.average((c == labels).data.cpu().numpy()))
 
 
         #Validation
