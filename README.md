@@ -1,5 +1,7 @@
 # Rotational Equivariant Vector Field Networks (RotEqNet) for PyTorch
 
+## Python 3 Port
+
 This is an PyTorch implementation of the method proposed in:
 Rotation equivariant vector field networks, ICCV 2017,
 Diego Marcos, Michele Volpi, Nikos Komodakis, Devis Tuia
