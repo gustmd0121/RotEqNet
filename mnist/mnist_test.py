@@ -189,7 +189,7 @@ if __name__ == '__main__':
     train_set, val_set,  test_set = loadMnistRot()
 
     best_acc = 0
-    for epoch_no in range(5):
+    for epoch_no in range(90):
 
         #Random order for each epoch
         train_set_for_epoch = train_set[:] #Make a copy
