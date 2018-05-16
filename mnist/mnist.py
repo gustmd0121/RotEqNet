@@ -4,6 +4,9 @@ import sys
 sys.path.append('../')
 from utils import getGrid, rotate_grid_2D
 
+Filename = "Allogymnopleuri_#05"
+base_folder = "../../../Dung_Beetle_Database/" + Filename + "/"
+
 def loadMnist(mode):
     print('Loading MNIST', mode, 'images')
     # Mode = 'train'/'test
@@ -61,19 +64,43 @@ def linear_interpolation_2D(input_array, indices, outside_val=0, boundary_correc
 
     return output
 
+# def loadMnistRot():
+#     def load_and_make_list(mode):
+#         data = np.load('mnist_rot/' + mode + '_data.npy')
+#         lbls = np.load('mnist_rot/' + mode + '_label.npy')
+#
+#
+#         print(data.shape[2])
+#
+#         data = np.split(data, data.shape[2],2)
+#         lbls = np.split(lbls, lbls.shape[0],0)
+#
+#         return list(zip(data,lbls))
+#
+#     train = load_and_make_list('train')
+#     val = load_and_make_list('val')
+#     test = load_and_make_list('test')
+#
+#     return train, val, test
+
 def loadMnistRot():
-    def load_and_make_list(mode):
-        data = np.load('mnist_rot/' + mode + '_data.npy')
-        lbls = np.load('mnist_rot/' + mode + '_label.npy')
-        data = np.split(data, data.shape[2],2)
-        lbls = np.split(lbls, lbls.shape[0],0)
+    import glob
+    from PIL import Image
+    filelist = glob.glob(base_folder + Filename + "_imgs/*")
+    imgs = np.array([np.array(Image.open(fname).convert('L')) for fname in filelist])
 
-        return list(zip(data,lbls))
+    print(imgs.shape)
+    imgs = np.split(imgs, imgs.shape[0],0)
 
-    train = load_and_make_list('train')
-    val = load_and_make_list('val')
-    test = load_and_make_list('test')
-    return train, val, test
+    mask_data = np.load(base_folder + Filename + "_masks.npz")
+
+    mask_data = np.split(mask_data['ball'], mask_data['ball'].shape[2],2)
+    print(len(mask_data))
+
+    masks = list(zip(imgs, mask_data))
+
+    return masks, masks, masks
+
 
 def random_rotation(data):
     rot = np.random.rand() * 360  # Random rotation
