@@ -35,7 +35,7 @@ if __name__ == '__main__':
 
             self.main = nn.Sequential(
 
-                RotConv(1, 6, [9, 9], 1, 9 // 2, n_angles=17, mode=1),
+                RotConv(3, 6, [9, 9], 1, 9 // 2, n_angles=17, mode=1),
                 VectorMaxPool(2),
                 VectorBatchNorm(6),
 
@@ -50,7 +50,7 @@ if __name__ == '__main__':
                 nn.BatchNorm2d(128),
                 nn.ReLU(),
                 nn.Dropout2d(0.7),
-                nn.Conv2d(128, 10, 1),  # FC2
+                nn.Conv2d(128, 2, 1),  # FC2
 
             )
 
