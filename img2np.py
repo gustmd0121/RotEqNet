@@ -22,7 +22,7 @@ def create_mask(props):
 
         for x in range(pos_x, pos_x + size_w):
             for y in range(pos_y, pos_y + size_h):
-                mask[y][x][i] = 255
+                mask[y][x][i] = 1
     return mask
 
 with open(beetle_props_file) as f:
