@@ -4,14 +4,14 @@ from PIL import Image
 from ast import literal_eval
 
 img_size = (1080, 1920)
-Filename = "Allogymnopleuri_#05"
-base_folder = "../../Dung_Beetle_Database/" + Filename + "/"
+Filename = "Lamarcki_#03"
+base_folder = "data/" + Filename + "/"
 
 img_folder = base_folder + Filename + "_imgs/"
 #mask_folder = base_folder + Filename + "_masks/"
 
-beetle_props_file = Filename + "_beetle_props.txt"
-ball_props_file = Filename + "_ball_props.txt"
+beetle_props_file = base_folder + Filename + "_beetle_props.txt"
+ball_props_file = base_folder + Filename + "_ball_props.txt"
 
 def create_mask(props):
     mask = np.zeros([1080, 1920, len(props)])

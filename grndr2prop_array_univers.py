@@ -1,12 +1,12 @@
 import json
 
-file = "Allogymnopleuri_#01"
-folder = "/home/marvin/Downloads/"
+file = "Lamarcki_#03"
+folder = "data/" + file + "/"
 
-beetle_props = open(file + '_beetle_props.txt', 'a')
-ball_props = open(file + '_ball_props.txt', 'a')
+beetle_props = open(folder + file + '_beetle_props.txt', 'a')
+ball_props = open(folder + file + '_ball_props.txt', 'a')
 
-with open(folder + file + "/" + file + "_db.grndr") as json_data:
+with open(folder + file + ".grndr") as json_data:
     data = json.load(json_data)
 
     data_beetle = []
