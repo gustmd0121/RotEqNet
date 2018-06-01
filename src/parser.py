@@ -134,7 +134,7 @@ class Parser:
 
             for x in range(int(pos_x * scale_factor), int((pos_x + size_w) * scale_factor)):
                 for y in range(int(pos_y * scale_factor), int((pos_y + size_h) * scale_factor)):
-                    mask[y][x][i] = 200
+                    mask[y][x][i] = 1
         return mask
 
 
@@ -150,6 +150,7 @@ class Parser:
             img_name = "img-" + str(i+1).zfill(5) + ".png"
             scaled_img = cv2.imread(self.folder + file + "/" + file + "_imgs/" + img_name)
             scaled_img = cv2.resize(scaled_img, (int(self.img_size[1]*scale_factor), int(self.img_size[0]*scale_factor)), interpolation=cv2.INTER_CUBIC)
+            scaled_img = cv2.cvtColor(scaled_img, cv2.COLOR_BGR2RGB)
             data[:, :, :, i] = scaled_img
         np.savez_compressed(self.folder + file +"/" + file + "_input", data=data)
 
