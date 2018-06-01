@@ -15,10 +15,18 @@ class Parser:
     def parse(self, file):
         print("Parsing grinder file ...")
 
+        grndr_name = self.folder + file + "/" + file + ".grndr"
+
+        if not os.path.isfile(grndr_name):
+            grndr_name = self.folder + file + "/" + file + "_db.grndr"
+                if not os.path.isfile(grndr_name):
+                    print("No grinder file.")
+                    return
+
         beetle_props = open(self.folder + file + "/" + file + '_beetle_props.txt', 'w')
         ball_props = open(self.folder + file + "/" + file + '_ball_props.txt', 'w')
 
-        with open(self.folder + file + "/" + file + ".grndr") as json_data:
+        with open(grndr_name) as json_data:
             data = json.load(json_data)
 
             data_beetle = []
@@ -101,7 +109,7 @@ class Parser:
                 ball_props.write(str(x) + "\n")
 
 
-    def create_numpy_arrays(self, file, scale_factor, override = False):
+    def create_numpy_arrays(self, file, scale_factor, override = False, value = 1):
         if not(override) and os.path.exists(self.folder + file +"/" + file + "_masks.npz"):
             print("Ground truth numpy array file already exists.")
             return
@@ -119,13 +127,13 @@ class Parser:
         with open(ball_props_file) as f:
             ball_props = [literal_eval(line) for line in f.readlines()]
 
-        beetle_masks = self.__create_mask(beetle_props, scale_factor)
-        ball_masks = self.__create_mask(ball_props, scale_factor)
+        beetle_masks = self.__create_mask(beetle_props, scale_factor, value)
+        ball_masks = self.__create_mask(ball_props, scale_factor, value)
 
         np.savez_compressed(self.folder + file +"/" + file + "_masks", beetle=beetle_masks, ball=ball_masks)
 
 
-    def __create_mask(self, props, scale_factor):
+    def __create_mask(self, props, scale_factor, value):
         mask = np.zeros([int(self.img_size[0] * scale_factor), int(self.img_size[1] * scale_factor), len(props)], dtype='uint8')
         for i in range(0, len(props)):
             index, pos, size, hasdir, dir = props[i]
@@ -134,7 +142,7 @@ class Parser:
 
             for x in range(int(pos_x * scale_factor), int((pos_x + size_w) * scale_factor)):
                 for y in range(int(pos_y * scale_factor), int((pos_y + size_h) * scale_factor)):
-                    mask[y][x][i] = 1
+                    mask[y][x][i] = value
         return mask
 
 
@@ -144,14 +152,25 @@ class Parser:
             return
 
         print("Generating input numpy array ...")
-        img_count = len(os.listdir(self.folder + file + "/" + file + "_imgs/"))
-        data = np.zeros([int(self.img_size[0]*scale_factor), int(self.img_size[1]*scale_factor), 3, img_count], dtype='uint8')
-        for i in range(0, img_count):
+
+        ball_props_file = self.folder + file + "/" + file + "_ball_props.txt"
+        with open(ball_props_file) as f:
+            props = len([literal_eval(line) for line in f.readlines()])
+
+        data = np.zeros([int(self.img_size[0]*scale_factor), int(self.img_size[1]*scale_factor), 3, props], dtype='uint8')
+        for i in range(0, props):
             img_name = "img-" + str(i+1).zfill(5) + ".png"
-            scaled_img = cv2.imread(self.folder + file + "/" + file + "_imgs/" + img_name)
-            scaled_img = cv2.resize(scaled_img, (int(self.img_size[1]*scale_factor), int(self.img_size[0]*scale_factor)), interpolation=cv2.INTER_CUBIC)
-            scaled_img = cv2.cvtColor(scaled_img, cv2.COLOR_BGR2RGB)
-            data[:, :, :, i] = scaled_img
+            if os.path.isfile(self.folder + file + "/" + file + "_imgs/" + img_name):
+                scaled_img = cv2.imread(self.folder + file + "/" + file + "_imgs/" + img_name)
+                scaled_img = cv2.resize(scaled_img, (int(self.img_size[1]*scale_factor), int(self.img_size[0]*scale_factor)), interpolation=cv2.INTER_CUBIC)
+                scaled_img = cv2.cvtColor(scaled_img, cv2.COLOR_BGR2RGB)
+                data[:, :, :, i] = scaled_img
+            img_name = "img_" + str(i+1).zfill(5) + ".png"
+            if os.path.isfile(self.folder + file + "/" + file + "_imgs/" + img_name):
+                scaled_img = cv2.imread(self.folder + file + "/" + file + "_imgs/" + img_name)
+                scaled_img = cv2.resize(scaled_img, (int(self.img_size[1]*scale_factor), int(self.img_size[0]*scale_factor)), interpolation=cv2.INTER_CUBIC)
+                scaled_img = cv2.cvtColor(scaled_img, cv2.COLOR_BGR2RGB)
+                data[:, :, :, i] = scaled_img
         np.savez_compressed(self.folder + file +"/" + file + "_input", data=data)
 
 
