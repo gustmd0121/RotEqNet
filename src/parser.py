@@ -121,12 +121,12 @@ class Parser:
 
         beetle_masks = self.__create_mask(beetle_props, scale_factor)
         ball_masks = self.__create_mask(ball_props, scale_factor)
-        print(ball_masks.shape)
+
         np.savez_compressed(self.folder + file +"/" + file + "_masks", beetle=beetle_masks, ball=ball_masks)
 
 
     def __create_mask(self, props, scale_factor):
-        mask = np.zeros([int(self.img_size[0] * scale_factor), int(self.img_size[1] * scale_factor), len(props)])
+        mask = np.zeros([int(self.img_size[0] * scale_factor), int(self.img_size[1] * scale_factor), len(props)], dtype='uint8')
         for i in range(0, len(props)):
             index, pos, size, hasdir, dir = props[i]
             pos_x, pos_y = pos
@@ -134,7 +134,7 @@ class Parser:
 
             for x in range(int(pos_x * scale_factor), int((pos_x + size_w) * scale_factor)):
                 for y in range(int(pos_y * scale_factor), int((pos_y + size_h) * scale_factor)):
-                    mask[y][x][i] = 1
+                    mask[y][x][i] = 200
         return mask
 
 
@@ -145,7 +145,7 @@ class Parser:
 
         print("Generating input numpy array ...")
         img_count = len(os.listdir(self.folder + file + "/" + file + "_imgs/"))
-        data = np.zeros([int(self.img_size[0]*scale_factor), int(self.img_size[1]*scale_factor), 3, img_count])
+        data = np.zeros([int(self.img_size[0]*scale_factor), int(self.img_size[1]*scale_factor), 3, img_count], dtype='uint8')
         for i in range(0, img_count):
             img_name = "img-" + str(i+1).zfill(5) + ".png"
             scaled_img = cv2.imread(self.folder + file + "/" + file + "_imgs/" + img_name)
@@ -156,3 +156,24 @@ class Parser:
 
     def set_img_size(self, img_size):
         self.img_size = (img_size[0], img_size[1])
+
+
+    def load_image(self, file, i):
+        ground = np.load(self.folder + file +"/" + file + "_masks.npz")
+        data = np.load(self.folder + file +"/" + file + "_input.npz")
+
+        beetle = ground['beetle']
+        ball = ground['ball']
+        full = data['data']
+
+        np_ball = ball[:, :, i]
+        np_beetle = beetle[:, :, i]
+        np_img = full[:, :, :, i]
+
+        img_ball = Image.fromarray(np_ball)
+        img_beetle = Image.fromarray(np_beetle)
+        img = Image.fromarray(np_img, 'RGB')
+
+        print(img_beetle.show())
+        print(img_ball.show())
+        print(img.show())
