@@ -1,6 +1,7 @@
 import json
 import os
 import numpy as np
+import cv2
 from scipy import misc
 from PIL import Image
 from ast import literal_eval
@@ -10,7 +11,10 @@ class Parser:
         self.folder = folder
         self.img_size = (1080, 1920)
 
+
     def parse(self, file):
+        print("Parsing grinder file ...")
+
         beetle_props = open(self.folder + file + "/" + file + '_beetle_props.txt', 'w')
         ball_props = open(self.folder + file + "/" + file + '_ball_props.txt', 'w')
 
@@ -96,15 +100,13 @@ class Parser:
                 #print(x)
                 ball_props.write(str(x) + "\n")
 
-    def create_numpy_arrays(self, file, scale_factor):
-        if os.path.exists(self.folder + file +"/" + file + "_masks.npz"):
-            print("Numpy array file already exists.")
+
+    def create_numpy_arrays(self, file, scale_factor, override = False):
+        if not(override) and os.path.exists(self.folder + file +"/" + file + "_masks.npz"):
+            print("Ground truth numpy array file already exists.")
             return
 
-        print("Generating ground truth numpy arrays ...")
-
-        if scale_factor != 1:
-            self.set_img_size(self.img_size, scale_factor)
+        print("Generating ground truth numpy array ...")
 
         img_folder = self.folder + file + "/" + file + "_imgs/"
 
@@ -119,12 +121,12 @@ class Parser:
 
         beetle_masks = self.__create_mask(beetle_props, scale_factor)
         ball_masks = self.__create_mask(ball_props, scale_factor)
-
+        print(ball_masks.shape)
         np.savez_compressed(self.folder + file +"/" + file + "_masks", beetle=beetle_masks, ball=ball_masks)
 
 
     def __create_mask(self, props, scale_factor):
-        mask = np.zeros([self.img_size[0], self.img_size[1], len(props)])
+        mask = np.zeros([int(self.img_size[0] * scale_factor), int(self.img_size[1] * scale_factor), len(props)])
         for i in range(0, len(props)):
             index, pos, size, hasdir, dir = props[i]
             pos_x, pos_y = pos
@@ -136,20 +138,21 @@ class Parser:
         return mask
 
 
-    def generate_input(self, file, scale_factor):
-        if os.path.exists(self.folder + file +"/" + file + "_input.npz"):
-            print("Numpy array file already exists.")
+    def generate_input(self, file, scale_factor, override = False):
+        if not(override) and os.path.exists(self.folder + file +"/" + file + "_input.npz"):
+            print("Input numpy array file already exists.")
             return
 
         print("Generating input numpy array ...")
         img_count = len(os.listdir(self.folder + file + "/" + file + "_imgs/"))
-        data = np.zeros([self.img_size[0], self.img_size[1], img_count])
+        data = np.zeros([int(self.img_size[0]*scale_factor), int(self.img_size[1]*scale_factor), 3, img_count])
         for i in range(0, img_count):
-            for x in range(0, img_count, int(1/scale_factor)):
-                for y in range(0, img_count, int(1/scale_factor)):
-                    data[y][x][i] = 1
+            img_name = "img-" + str(i+1).zfill(5) + ".png"
+            scaled_img = cv2.imread(self.folder + file + "/" + file + "_imgs/" + img_name)
+            scaled_img = cv2.resize(scaled_img, (int(self.img_size[1]*scale_factor), int(self.img_size[0]*scale_factor)), interpolation=cv2.INTER_CUBIC)
+            data[:, :, :, i] = scaled_img
         np.savez_compressed(self.folder + file +"/" + file + "_input", data=data)
 
 
-    def set_img_size(self, img_size, scale_factor):
-        self.img_size = (int(img_size[0] * scale_factor), int(img_size[1] * scale_factor))
+    def set_img_size(self, img_size):
+        self.img_size = (img_size[0], img_size[1])
