@@ -112,7 +112,6 @@ class Parser:
                 #print(x)
                 ball_props.write(str(x) + "\n")
 
-
     def create_numpy_arrays(self, file, scale_factor, override = False, value = 1):
         if not(override) and os.path.exists(self.folder + file +"/" + file + "_masks.npz"):
             print("Ground truth numpy array file already exists.")
@@ -137,10 +136,11 @@ class Parser:
         np.savez_compressed(self.folder + file +"/" + file + "_masks", beetle=beetle_masks, ball=ball_masks)
 
 
+    #TODO instead of lines use image file of prop files
     def __create_mask(self, props, scale_factor, value):
         mask = np.zeros([int(self.img_size[0] * scale_factor), int(self.img_size[1] * scale_factor), len(props)], dtype='uint8')
         for i in range(0, len(props)):
-            index, pos, size, hasdir, dir = props[i]
+            index, pos, size, hasdir, dir, file = props[i]
             pos_x, pos_y = pos
             size_w, size_h = size
 
@@ -150,6 +150,7 @@ class Parser:
         return mask
 
 
+    #TODO instead of lines use image file of prop files
     def generate_input(self, file, scale_factor, override = False):
         if not(override) and os.path.exists(self.folder + file +"/" + file + "_input.npz"):
             print("Input numpy array file already exists.")
