@@ -141,6 +141,10 @@ class Parser:
         beetle_props_file = self.folder + file + "/" + file + "_beetle_props.txt"
         ball_props_file = self.folder + file + "/" + file + "_ball_props.txt"
 
+        if (not os.path.isfile(beetle_props_file) or not os.path.isfile(ball_props_file)):
+            print("No props files.")
+            return
+
         with open(beetle_props_file) as f:
             beetle_props = [literal_eval(line) for line in f.readlines()]
 
@@ -176,10 +180,14 @@ class Parser:
         print("Generating input numpy array ...")
 
         ball_props_file = self.folder + file + "/" + file + "_ball_props.txt"
+        beetle_props_file = self.folder + file + "/" + file + "_beetle_props.txt"
+
+        if (not os.path.isfile(beetle_props_file) or not os.path.isfile(ball_props_file)):
+            print("No props files.")
+            return
+
         with open(ball_props_file) as f:
             ball_props = [literal_eval(line) for line in f.readlines()]
-
-        beetle_props_file = self.folder + file + "/" + file + "_beetle_props.txt"
         with open(beetle_props_file) as f:
             beetle_props = [literal_eval(line) for line in f.readlines()]
 
@@ -209,6 +217,10 @@ class Parser:
 
 
     def load_image(self, file, i):
+        if (not os.path.isfile(self.folder + file +"/" + file + "_masks.npz") or not os.path.isfile(self.folder + file +"/" + file + "_input.npz")):
+            print("No numpy files.")
+            return
+
         print("Loading ground truth numpy array ...")
         ground = np.load(self.folder + file +"/" + file + "_masks.npz")
         print("Loading input numpy array ...")
