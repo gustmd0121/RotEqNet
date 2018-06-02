@@ -94,9 +94,12 @@ class Parser:
             #sort data
             data_beetle.sort()
             #add missing
-            for i in range(0,json_length):
-                if not(i in [x[0] for x in data_beetle]):
-                    data_beetle.insert(i, (i, (0, 0), (0, 0), False, 0, ''))
+            # for i in range(0,json_length):
+            #     if not(i in [x[0] for x in data_beetle]):
+            #         data_beetle.insert(i, (i, (0, 0), (0, 0), False, 0, ''))
+            for i in range(0,len(data_ball)):
+                if not(data_ball[i][0] in [x[0] for x in data_beetle]):
+                    data_beetle.insert(i, (i, (0, 0), (0, 0), False, 0, data_ball[i][5]))
             #write data
             for x in data_beetle:
                 #print(x)
@@ -105,13 +108,26 @@ class Parser:
             #sort data
             data_ball.sort()
             #add missing
-            for i in range(0,json_length):
-                if not(i in [x[0] for x in data_ball]):
-                    data_ball.insert(i, (i, (0, 0), (0, 0), False, 0, ''))
+            # for i in range(0,json_length):
+            #     if not(i in [x[0] for x in data_ball]):
+            #         data_ball.insert(i, (i, (0, 0), (0, 0), False, 0, ''))
+            for i in range(0,len(data_beetle)):
+                if not(data_beetle[i][0] in [x[0] for x in data_ball]):
+                    data_ball.insert(i, (i, (0, 0), (0, 0), False, 0, data_beetle[i][5]))
+
+            #check wheter files are 'equal'
+            if(len(data_ball)!=len(data_beetle)):
+                print("Error: The number of ball labels is diffent from the number of beetle labels.")
+
+            for i in range(0,len(data_ball)):
+                if(data_ball[i][5] != data_beetle[i][5]):
+                    print("Error: Label number", i, "is diffent. Ball image:", data_ball[i][5], ", Beetle image:", data_beetle[i][5])
+
             #write data
             for x in data_ball:
                 #print(x)
                 ball_props.write(str(x) + "\n")
+
 
     def create_numpy_arrays(self, file, scale_factor, override = False, value = 1):
         if not(override) and os.path.exists(self.folder + file +"/" + file + "_masks.npz"):
@@ -134,10 +150,11 @@ class Parser:
         beetle_masks = self.__create_mask(beetle_props, scale_factor, value)
         ball_masks = self.__create_mask(ball_props, scale_factor, value)
 
+        print("Compressing and saving ground truth numpy array ...")
         np.savez_compressed(self.folder + file +"/" + file + "_masks", beetle=beetle_masks, ball=ball_masks)
 
 
-    #TODO instead of lines use image file of prop files
+
     def __create_mask(self, props, scale_factor, value):
         mask = np.zeros([int(self.img_size[0] * scale_factor), int(self.img_size[1] * scale_factor), len(props)], dtype='uint8')
         for i in range(0, len(props)):
@@ -151,7 +168,6 @@ class Parser:
         return mask
 
 
-    #TODO instead of lines use image file of prop files
     def generate_input(self, file, scale_factor, override = False):
         if not(override) and os.path.exists(self.folder + file +"/" + file + "_input.npz"):
             print("Input numpy array file already exists.")
@@ -161,23 +177,30 @@ class Parser:
 
         ball_props_file = self.folder + file + "/" + file + "_ball_props.txt"
         with open(ball_props_file) as f:
-            props = len([literal_eval(line) for line in f.readlines()])
+            ball_props = [literal_eval(line) for line in f.readlines()]
 
-        data = np.zeros([int(self.img_size[0]*scale_factor), int(self.img_size[1]*scale_factor), 3, props], dtype='uint8')
-        for i in range(0, props):
-            img_name = "img-" + str(i+1).zfill(5) + ".png"
+        beetle_props_file = self.folder + file + "/" + file + "_beetle_props.txt"
+        with open(beetle_props_file) as f:
+            beetle_props = [literal_eval(line) for line in f.readlines()]
+
+        if(len(ball_props)!=len(beetle_props)):
+            print("Error: The number of ball labels is diffent from the number of beetle labels.")
+
+        data = np.zeros([int(self.img_size[0]*scale_factor), int(self.img_size[1]*scale_factor), 3, len(ball_props)], dtype='uint8')
+        for i in range(0, len(ball_props)):
+            img_name = ball_props[i][5]
+            if(img_name != beetle_props[i][5]):
+                print("Error: Different image files.")
             if os.path.isfile(self.folder + file + "/" + file + "_imgs/" + img_name):
                 scaled_img = cv2.imread(self.folder + file + "/" + file + "_imgs/" + img_name)
                 scaled_img = cv2.resize(scaled_img, (int(self.img_size[1]*scale_factor), int(self.img_size[0]*scale_factor)), interpolation=cv2.INTER_CUBIC)
                 scaled_img = cv2.cvtColor(scaled_img, cv2.COLOR_BGR2RGB)
                 data[:, :, :, i] = scaled_img
             else:
-                img_name = "img_" + str(i+1).zfill(5) + ".png"
-                if os.path.isfile(self.folder + file + "/" + file + "_imgs/" + img_name):
-                    scaled_img = cv2.imread(self.folder + file + "/" + file + "_imgs/" + img_name)
-                    scaled_img = cv2.resize(scaled_img, (int(self.img_size[1]*scale_factor), int(self.img_size[0]*scale_factor)), interpolation=cv2.INTER_CUBIC)
-                    scaled_img = cv2.cvtColor(scaled_img, cv2.COLOR_BGR2RGB)
-                    data[:, :, :, i] = scaled_img
+                print("Error: Cannot find", "'" + self.folder + file + "/" + file + "_imgs/" + img_name + "'.", "Index =", str(ball_props[i][0]) + ".")
+
+
+        print("Compressing and saving input numpy array ...")
         np.savez_compressed(self.folder + file +"/" + file + "_input", data=data)
 
 
@@ -186,12 +209,18 @@ class Parser:
 
 
     def load_image(self, file, i):
+        print("Loading ground truth numpy array ...")
         ground = np.load(self.folder + file +"/" + file + "_masks.npz")
+        print("Loading input numpy array ...")
         data = np.load(self.folder + file +"/" + file + "_input.npz")
 
         beetle = ground['beetle']
         ball = ground['ball']
         full = data['data']
+
+        if(len(ball[0][0]) < i or len(beetle[0][0]) < i or len(full[0][0][0]) < i):
+            print("Error: There are less than", i, "images.")
+            return;
 
         np_ball = ball[:, :, i]
         np_beetle = beetle[:, :, i]
@@ -201,6 +230,7 @@ class Parser:
         img_beetle = Image.fromarray(np_beetle)
         img = Image.fromarray(np_img, 'RGB')
 
+        #Sometimes show() doesnt work without print ...
         print(img_beetle.show())
         print(img_ball.show())
         print(img.show())
