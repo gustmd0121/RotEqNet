@@ -19,9 +19,9 @@ class Parser:
 
         if not os.path.isfile(grndr_name):
             grndr_name = self.folder + file + "/" + file + "_db.grndr"
-                if not os.path.isfile(grndr_name):
-                    print("No grinder file.")
-                    return
+            if not os.path.isfile(grndr_name):
+                print("No grinder file.")
+                return
 
         beetle_props = open(self.folder + file + "/" + file + '_beetle_props.txt', 'w')
         ball_props = open(self.folder + file + "/" + file + '_ball_props.txt', 'w')
@@ -31,9 +31,11 @@ class Parser:
 
             data_beetle = []
             data_ball = []
+            data_ref = []
 
             json_color = ''
             json_ref = 0
+            json_file = ''
             json_x = 0
             json_y = 0
             json_width = 0
@@ -46,12 +48,14 @@ class Parser:
             #get json length
             for images in data['ImageReferences']:
                 json_length += 1
+                data_ref.append((images['ImageReference']['Index'], images['ImageReference']['File']))
 
             #get json information
             for label in data['Labels']:
                 for pool in label['Label']['ImageBuildPool']:
                     for ref in pool['Item']['ImageBuilds']:
                         json_ref = ref['ImageBuild']['ImageReference']
+                        json_file = [data_ref for data_ref in data_ref if data_ref[0] == int(json_ref)][0][1]
                         for layer in ref['ImageBuild']['Layers']:
                             for draftitem in layer['Layer']['DraftItems']:
                                 for prop in draftitem['DraftItem']['Properties']:
@@ -73,16 +77,16 @@ class Parser:
                                 #color labeled method
                                 #beetle
                                 if(json_color == '#ff0000'):
-                                    data_beetle.append((json_ref, (json_x, json_y), (json_width, json_height), json_has_direction, json_direction))
+                                    data_beetle.append((json_ref, (json_x, json_y), (json_width, json_height), json_has_direction, json_direction, json_file))
                                 #ball
                                 if(json_color == '#00ff00'):
-                                    data_ball.append((json_ref, (json_x, json_y), (json_width, json_height), json_has_direction, json_direction))
+                                    data_ball.append((json_ref, (json_x, json_y), (json_width, json_height), json_has_direction, json_direction, json_file))
                                 #two label method
                                 if(json_color == '#ffffff'):
                                     if(label['Label']['Name'] == 'Beetle'):
-                                        data_beetle.append((json_ref, (json_x, json_y), (json_width, json_height), json_has_direction, json_direction))
+                                        data_beetle.append((json_ref, (json_x, json_y), (json_width, json_height), json_has_direction, json_direction, json_file))
                                     if(label['Label']['Name'] == 'Ball'):
-                                        data_ball.append((json_ref, (json_x, json_y), (json_width, json_height), json_has_direction, json_direction))
+                                        data_ball.append((json_ref, (json_x, json_y), (json_width, json_height), json_has_direction, json_direction, json_file))
                                 #reset
                                 json_color = ''
 
@@ -91,7 +95,7 @@ class Parser:
             #add missing
             for i in range(0,json_length):
                 if not(i in [x[0] for x in data_beetle]):
-                    data_beetle.insert(i, (i, (0, 0), (0, 0), False, 0))
+                    data_beetle.insert(i, (i, (0, 0), (0, 0), False, 0, ''))
             #write data
             for x in data_beetle:
                 #print(x)
@@ -102,7 +106,7 @@ class Parser:
             #add missing
             for i in range(0,json_length):
                 if not(i in [x[0] for x in data_ball]):
-                    data_ball.insert(i, (i, (0, 0), (0, 0), False, 0))
+                    data_ball.insert(i, (i, (0, 0), (0, 0), False, 0, ''))
             #write data
             for x in data_ball:
                 #print(x)
@@ -165,12 +169,13 @@ class Parser:
                 scaled_img = cv2.resize(scaled_img, (int(self.img_size[1]*scale_factor), int(self.img_size[0]*scale_factor)), interpolation=cv2.INTER_CUBIC)
                 scaled_img = cv2.cvtColor(scaled_img, cv2.COLOR_BGR2RGB)
                 data[:, :, :, i] = scaled_img
-            img_name = "img_" + str(i+1).zfill(5) + ".png"
-            if os.path.isfile(self.folder + file + "/" + file + "_imgs/" + img_name):
-                scaled_img = cv2.imread(self.folder + file + "/" + file + "_imgs/" + img_name)
-                scaled_img = cv2.resize(scaled_img, (int(self.img_size[1]*scale_factor), int(self.img_size[0]*scale_factor)), interpolation=cv2.INTER_CUBIC)
-                scaled_img = cv2.cvtColor(scaled_img, cv2.COLOR_BGR2RGB)
-                data[:, :, :, i] = scaled_img
+            else:
+                img_name = "img_" + str(i+1).zfill(5) + ".png"
+                if os.path.isfile(self.folder + file + "/" + file + "_imgs/" + img_name):
+                    scaled_img = cv2.imread(self.folder + file + "/" + file + "_imgs/" + img_name)
+                    scaled_img = cv2.resize(scaled_img, (int(self.img_size[1]*scale_factor), int(self.img_size[0]*scale_factor)), interpolation=cv2.INTER_CUBIC)
+                    scaled_img = cv2.cvtColor(scaled_img, cv2.COLOR_BGR2RGB)
+                    data[:, :, :, i] = scaled_img
         np.savez_compressed(self.folder + file +"/" + file + "_input", data=data)
 
 
