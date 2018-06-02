@@ -4,7 +4,7 @@ import sys
 sys.path.append('../')
 from utils import getGrid, rotate_grid_2D
 
-Filename = "Allogymnopleuri_#09"
+Filename = "Allogymnopleuri_#05"
 base_folder = "../../data/" + Filename + "/"
 
 def loadMnist(mode):
@@ -87,16 +87,18 @@ def loadMnistRot():
     import glob
     from PIL import Image
     filelist = glob.glob(base_folder + Filename + "_imgs/*")
-    imgs = np.array([np.array(Image.open(fname).convert('L')) for fname in filelist])
-
+    imgs = np.array([np.array(Image.open(fname).convert('L'), dtype=float) for fname in filelist])
+    print(imgs.dtype)
     print(imgs.shape)
-    imgs = np.split(imgs, imgs.shape[0],0)
+    imgs = [np.squeeze(subarray, axis=0) for subarray in np.split(imgs, imgs.shape[0],0)]
 
     mask_data = np.load(base_folder + Filename + "_masks.npz")
-
-    mask_data = np.split(mask_data['ball'], mask_data['ball'].shape[2],2)
+    print(mask_data['ball'].shape)
+    print(mask_data['ball'].shape)
+    mask_data = [np.squeeze(subarray, axis=2) for subarray in np.split(mask_data['ball'], mask_data['ball'].shape[2],2)]
     print(len(mask_data))
-
+    print(imgs[0].shape)
+    print(mask_data[0].shape)
     masks = list(zip(imgs, mask_data))
 
     return masks, masks, masks
@@ -111,3 +113,5 @@ def random_rotation(data):
     data = np.reshape(data, [28, 28])
     data = data / float(np.max(data))
     return data.astype('float32')
+
+# loadMnistRot()
