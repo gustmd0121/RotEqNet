@@ -56,6 +56,7 @@ class Parser:
                     for ref in pool['Item']['ImageBuilds']:
                         json_ref = ref['ImageBuild']['ImageReference']
                         json_file = [data_ref for data_ref in data_ref if data_ref[0] == int(json_ref)][0][1]
+                        json_file = json_file.split('/')[len(json_file.split('/'))-1]
                         for layer in ref['ImageBuild']['Layers']:
                             for draftitem in layer['Layer']['DraftItems']:
                                 for prop in draftitem['DraftItem']['Properties']:
