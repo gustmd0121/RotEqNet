@@ -28,6 +28,7 @@ https://arxiv.org/abs/1612.09346
 https://github.com/dmarcosg/RotEqNet
 """
 
+img_size = (540, 960)
 
 if __name__ == '__main__':
 
@@ -47,7 +48,7 @@ if __name__ == '__main__':
                 VectorBatchNorm(3),
 
                 RotConv(3, 1, [3, 3], 1, 1, n_angles=6, mode=2),
-                VectorUpsampling(size=(1080, 1920)),
+                VectorUpsampling(size=img_size),
                 Vector2Magnitude(),
 
                 # nn.Conv2d(32, 64, 1),  # FC1
@@ -122,7 +123,7 @@ if __name__ == '__main__':
                     for i in range(batch_size):
                         im = original_data[i,:,:,:].squeeze()
                         #im = rotate_im(im, rotation)
-                        im = im.reshape([1, 1, 1080, 1920])
+                        im = im.reshape([1, 1, img_size])
                         im = torch.FloatTensor(im)
                         data[i,:,:,:] = im
 
@@ -256,5 +257,3 @@ if __name__ == '__main__':
     xyz = np.squeeze(xyz)
     xyz = Image.fromarray(xyz, 'L')
     xyz.show()
-
-    

@@ -160,7 +160,7 @@ class Parser:
 
 
     def __create_mask(self, props, scale_factor, value):
-        mask = np.zeros([int(self.img_size[0] * scale_factor), int(self.img_size[1] * scale_factor), len(props)], dtype='uint8')
+        mask = np.zeros([int(self.img_size[0] * scale_factor), int(self.img_size[1] * scale_factor), len(props)], dtype='float32')
         for i in range(0, len(props)):
             index, pos, size, hasdir, dir, file = props[i]
             pos_x, pos_y = pos
@@ -194,7 +194,7 @@ class Parser:
         if(len(ball_props)!=len(beetle_props)):
             print("Error: The number of ball labels is diffent from the number of beetle labels.")
 
-        data = np.zeros([int(self.img_size[0]*scale_factor), int(self.img_size[1]*scale_factor), 3, len(ball_props)], dtype='uint8')
+        data = np.zeros([len(ball_props), int(self.img_size[0]*scale_factor), int(self.img_size[1]*scale_factor)], dtype='float32')
         for i in range(0, len(ball_props)):
             img_name = ball_props[i][5]
             if(img_name != beetle_props[i][5]):
@@ -202,11 +202,10 @@ class Parser:
             if os.path.isfile(self.folder + file + "/" + file + "_imgs/" + img_name):
                 scaled_img = cv2.imread(self.folder + file + "/" + file + "_imgs/" + img_name)
                 scaled_img = cv2.resize(scaled_img, (int(self.img_size[1]*scale_factor), int(self.img_size[0]*scale_factor)), interpolation=cv2.INTER_CUBIC)
-                scaled_img = cv2.cvtColor(scaled_img, cv2.COLOR_BGR2RGB)
-                data[:, :, :, i] = scaled_img
+                scaled_img = cv2.cvtColor(scaled_img, cv2.COLOR_BGR2GRAY)
+                data[i, :, :] = scaled_img
             else:
                 print("Error: Cannot find", "'" + self.folder + file + "/" + file + "_imgs/" + img_name + "'.", "Index =", str(ball_props[i][0]) + ".")
-
 
         print("Compressing and saving input numpy array ...")
         np.savez_compressed(self.folder + file +"/" + file + "_input", data=data)
@@ -230,17 +229,17 @@ class Parser:
         ball = ground['ball']
         full = data['data']
 
-        if(len(ball[0][0]) < i or len(beetle[0][0]) < i or len(full[0][0][0]) < i):
+        if(len(ball[0][0]) < i or len(beetle[0][0]) < i or len(full[0][0]) < i):
             print("Error: There are less than", i, "images.")
             return;
 
         np_ball = ball[:, :, i]
         np_beetle = beetle[:, :, i]
-        np_img = full[:, :, :, i]
+        np_img = full[:, :, i]
 
         img_ball = Image.fromarray(np_ball)
         img_beetle = Image.fromarray(np_beetle)
-        img = Image.fromarray(np_img, 'RGB')
+        img = Image.fromarray(np_img)
 
         #Sometimes show() doesnt work without print ...
         print(img_beetle.show())

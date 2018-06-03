@@ -4,7 +4,7 @@ import sys
 sys.path.append('../')
 from utils import getGrid, rotate_grid_2D
 
-Filename = "Allogymnopleuri_#05"
+Filename = "Lamarcki_#09"
 base_folder = "../../data/" + Filename + "/"
 
 def loadMnist(mode):
@@ -86,8 +86,9 @@ def linear_interpolation_2D(input_array, indices, outside_val=0, boundary_correc
 def loadMnistRot():
     import glob
     from PIL import Image
-    filelist = glob.glob(base_folder + Filename + "_imgs/*")
-    imgs = np.array([np.array(Image.open(fname).convert('L'), dtype=float) for fname in filelist])
+    # filelist = glob.glob(base_folder + Filename + "_imgs/*")
+    # imgs = np.array([np.array(Image.open(fname).convert('L'), dtype=float) for fname in filelist])
+    imgs =  np.load(base_folder + Filename + "_input.npz")['data']
     print(imgs.dtype)
     print(imgs.shape)
     imgs = [np.squeeze(subarray, axis=0) for subarray in np.split(imgs, imgs.shape[0],0)]
