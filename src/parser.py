@@ -75,20 +75,24 @@ class Parser:
                                     if(prop['Property']['ID'] == 'Size'):
                                         json_width = int(float(prop['Property']['Value'].split(";")[0]))
                                         json_height = int(float(prop['Property']['Value'].split(";")[1]))
-                                #color labeled method
-                                #beetle
-                                if(json_color == '#ff0000'):
-                                    data_beetle.append((json_ref, (json_x, json_y), (json_width, json_height), json_has_direction, json_direction, json_file))
-                                #ball
-                                if(json_color == '#00ff00'):
-                                    data_ball.append((json_ref, (json_x, json_y), (json_width, json_height), json_has_direction, json_direction, json_file))
-                                #two label method
-                                if(json_color == '#ffffff'):
-                                    if(label['Label']['Name'] == 'Beetle'):
+
+                                if not(os.path.isfile(self.folder + file + "/" + file + "_imgs/" + json_file)):
+                                    print("Error: Cannot find", "'" + self.folder + file + "/" + file + "_imgs/" + json_file)
+                                else:
+                                    #color labeled method
+                                    #beetle
+                                    if(json_color == '#ff0000'):
                                         data_beetle.append((json_ref, (json_x, json_y), (json_width, json_height), json_has_direction, json_direction, json_file))
-                                    if(label['Label']['Name'] == 'Ball'):
+                                    #ball
+                                    if(json_color == '#00ff00'):
                                         data_ball.append((json_ref, (json_x, json_y), (json_width, json_height), json_has_direction, json_direction, json_file))
-                                #reset
+                                    #two label method
+                                    if(json_color == '#ffffff'):
+                                        if(label['Label']['Name'] == 'Beetle'):
+                                            data_beetle.append((json_ref, (json_x, json_y), (json_width, json_height), json_has_direction, json_direction, json_file))
+                                        if(label['Label']['Name'] == 'Ball'):
+                                            data_ball.append((json_ref, (json_x, json_y), (json_width, json_height), json_has_direction, json_direction, json_file))
+                                    #reset
                                 json_color = ''
 
             #sort data
@@ -117,11 +121,11 @@ class Parser:
 
             #check wheter files are 'equal'
             if(len(data_ball)!=len(data_beetle)):
-                print("Error: The number of ball labels is diffent from the number of beetle labels.")
+                print("Error: The number of ball labels is different from the number of beetle labels.")
 
             for i in range(0,len(data_ball)):
                 if(data_ball[i][5] != data_beetle[i][5]):
-                    print("Error: Label number", i, "is diffent. Ball image:", data_ball[i][5], ", Beetle image:", data_beetle[i][5])
+                    print("Error: Label number", i, "is different. Ball image:", data_ball[i][5], ", Beetle image:", data_beetle[i][5])
 
             #write data
             for x in data_ball:
@@ -199,13 +203,10 @@ class Parser:
             img_name = ball_props[i][5]
             if(img_name != beetle_props[i][5]):
                 print("Error: Different image files.")
-            if os.path.isfile(self.folder + file + "/" + file + "_imgs/" + img_name):
-                scaled_img = cv2.imread(self.folder + file + "/" + file + "_imgs/" + img_name)
-                scaled_img = cv2.resize(scaled_img, (int(self.img_size[1]*scale_factor), int(self.img_size[0]*scale_factor)), interpolation=cv2.INTER_CUBIC)
-                scaled_img = cv2.cvtColor(scaled_img, cv2.COLOR_BGR2GRAY)
-                data[i, :, :] = scaled_img
-            else:
-                print("Error: Cannot find", "'" + self.folder + file + "/" + file + "_imgs/" + img_name + "'.", "Index =", str(ball_props[i][0]) + ".")
+            scaled_img = cv2.imread(self.folder + file + "/" + file + "_imgs/" + img_name)
+            scaled_img = cv2.resize(scaled_img, (int(self.img_size[1]*scale_factor), int(self.img_size[0]*scale_factor)), interpolation=cv2.INTER_CUBIC)
+            scaled_img = cv2.cvtColor(scaled_img, cv2.COLOR_BGR2GRAY)
+            data[i, :, :] = scaled_img
 
         print("Compressing and saving input numpy array ...")
         np.savez_compressed(self.folder + file +"/" + file + "_input", data=data)

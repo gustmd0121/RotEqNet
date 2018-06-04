@@ -21,5 +21,6 @@ for sub_folder in os.listdir(data_folder):
         p.create_numpy_arrays(sub_folder, scale_factor, True, 255)
         p.generate_input(sub_folder, scale_factor, True)
         print("Finished", sub_folder + ".")
+        print("")
         #p.load_image(sub_folder, 100)
 print("Finished.")
