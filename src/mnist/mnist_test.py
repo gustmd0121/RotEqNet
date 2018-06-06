@@ -38,18 +38,62 @@ if __name__ == '__main__':
             super(Net, self).__init__()
 
             self.main = nn.Sequential(
+                nn.BatchNorm2d(1),
 
-                RotConv(1, 2, [3, 3], 1, 3 // 2, n_angles=6, mode=1),
-                VectorMaxPool(2),
-                VectorBatchNorm(2),
+                nn.Conv2d(1, 2, 3, padding=3 // 2),
+                nn.MaxPool2d(2),
+                nn.BatchNorm2d(2),
 
-                RotConv(2, 3, [3, 3], 1, 3 // 2, n_angles=6, mode=2),
-                VectorMaxPool(2),
-                VectorBatchNorm(3),
+                nn.Conv2d(2, 8, 3, padding=3 // 2),
+                nn.MaxPool2d(2),
+                nn.BatchNorm2d(8),
 
-                RotConv(3, 1, [3, 3], 1, 1, n_angles=6, mode=2),
-                VectorUpsampling(size=img_size),
-                Vector2Magnitude(),
+                nn.Conv2d(8, 16, 3, padding=3 // 2),
+                nn.MaxPool2d(2),
+                nn.BatchNorm2d(16),
+
+                nn.Conv2d(16, 8, 3, padding=3 // 2),
+                nn.UpsamplingBilinear2d(scale_factor=2),
+                nn.BatchNorm2d(8),
+
+                nn.Conv2d(8, 4, 3, padding=3 // 2),
+                nn.UpsamplingBilinear2d(scale_factor=2),
+                nn.BatchNorm2d(4),
+
+                nn.Conv2d(4, 2, 3, padding=3 // 2),
+                nn.UpsamplingBilinear2d(scale_factor=2),
+                nn.BatchNorm2d(2),
+
+                nn.Conv2d(2, 1, 1, padding=1),
+                nn.UpsamplingBilinear2d(size=img_size)
+
+                #RotConv(1, 2, [3, 3], 1, 3 // 2, n_angles=6, mode=1),
+                #VectorMaxPool(2),
+                #VectorBatchNorm(2),
+
+                # RotConv(2, 8, [3, 3], 1, 3 // 2, n_angles=6, mode=2),
+                # VectorMaxPool(2),
+                # VectorBatchNorm(8),
+                #
+                # RotConv(8, 16, [3, 3], 1, 3 // 2, n_angles=6, mode=2),
+                # VectorMaxPool(2),
+                # VectorBatchNorm(16),
+                #
+                # RotConv(16, 8, [3, 3], 1, 3 // 2, n_angles=6, mode=2),
+                # VectorUpsampling(scale_factor=2),
+                # VectorBatchNorm(8),
+                #
+                # RotConv(8, 4, [3, 3], 1, 3 // 2, n_angles=6, mode=2),
+                # VectorUpsampling(scale_factor=2),
+                # VectorBatchNorm(4),
+                #
+                # RotConv(4, 2, [3, 3], 1, 3 // 2, n_angles=6, mode=2),
+                # VectorUpsampling(scale_factor=2),
+                # VectorBatchNorm(2),
+                #
+                # RotConv(2, 1, [3, 3], 1, 1, n_angles=6, mode=2),
+                # VectorUpsampling(size=img_size),
+                # Vector2Magnitude(),
 
                 # nn.Conv2d(32, 64, 1),  # FC1
                 # nn.BatchNorm2d(64),
@@ -83,14 +127,6 @@ if __name__ == '__main__':
         optimizer = optim.Adam(net.parameters(), lr=start_lr)  # , weight_decay=0.01)
         use_test_time_augmentation = True
         use_train_time_augmentation = True
-
-    if False: #From paper using MATLAB implementation - reported error rate of 1.4%
-        start_lr = 0.1
-        batch_size = 600
-        optimizer = optim.SGD(net.parameters(), lr=start_lr, weight_decay=0.01)
-        use_test_time_augmentation = True
-        use_train_time_augmentation = True
-
 
     def rotate_im(im, theta):
         grid = getGrid([28, 28])
@@ -126,6 +162,7 @@ if __name__ == '__main__':
                         im = im.reshape([1, 1, img_size])
                         im = torch.FloatTensor(im)
                         data[i,:,:,:] = im
+                        #data = im
 
                     if type(gpu_no) == int:
                         data = data.cuda(gpu_no)
@@ -145,10 +182,10 @@ if __name__ == '__main__':
             _, c = torch.max(out, 1)
             true.append(labels.data.cpu().numpy())
             pred.append(c.data.cpu().numpy())
-        #true = np.concatenate(true, 0)
-        #pred = np.concatenate(pred, 0)
-        #acc = np.average(pred == true)
-        return 0.981223
+        true = np.concatenate(true, 0)
+        pred = np.concatenate(pred, 0)
+        acc = np.average(pred == true)
+        return acc
 
     def getBatch(dataset, mode):
         """ Collect a batch of samples from list """
@@ -165,7 +202,7 @@ if __name__ == '__main__':
             #    img = random_rotation(img)
 
             data.append(np.expand_dims(np.expand_dims(img, 0), 0))
-            labels.append(tmp[1].squeeze())
+            labels.append(np.expand_dims(tmp[1].squeeze(), 0))
         data = np.concatenate(data, 0)
         labels = np.array(labels, 'float32')
 
@@ -175,7 +212,6 @@ if __name__ == '__main__':
         if type(gpu_no) == int:
             data = data.cuda(gpu_no)
             labels = labels.cuda(gpu_no)
-
         return data, labels
 
     def adjust_learning_rate(optimizer, epoch):
@@ -247,7 +283,7 @@ if __name__ == '__main__':
     from PIL import Image
 
     loader = transforms.Compose([transforms.ToTensor()])
-    image = Image.fromarray(test_set[0][0], 'L')
+    image = Image.fromarray(test_set[0][0][0, :, :], 'L')
     image = loader(image).float()
     image = Variable(image, requires_grad=True)
     image = image.unsqueeze(0)  # this is for VGG, may not be needed for ResNet
