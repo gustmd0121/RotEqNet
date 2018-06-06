@@ -4,7 +4,7 @@ import sys
 sys.path.append('../')
 from utils import getGrid, rotate_grid_2D
 
-Filename = "Allogymnopleuri_#05"
+Filename = "Allogymnopleuri_#09"
 base_folder = "../../data/" + Filename + "/"
 
 def loadMnist(mode):

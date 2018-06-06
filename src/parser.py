@@ -230,13 +230,13 @@ class Parser:
         ball = ground['ball']
         full = data['data']
 
-        if(len(ball[0][0]) < i or len(beetle[0][0]) < i or len(full[0][0]) < i):
+        if(len(ball[0][0]) < i or len(beetle[0][0]) < i or len(full) < i):
             print("Error: There are less than", i, "images.")
             return;
 
         np_ball = ball[:, :, i]
         np_beetle = beetle[:, :, i]
-        np_img = full[:, :, i]
+        np_img = full[i, :, :]
 
         img_ball = Image.fromarray(np_ball)
         img_beetle = Image.fromarray(np_beetle)

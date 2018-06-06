@@ -38,34 +38,41 @@ if __name__ == '__main__':
             super(Net, self).__init__()
 
             self.main = nn.Sequential(
-                nn.BatchNorm2d(1),
+                #nn.BatchNorm2d(1),
 
-                nn.Conv2d(1, 2, 3, padding=3 // 2),
-                nn.MaxPool2d(2),
-                nn.BatchNorm2d(2),
-
-                nn.Conv2d(2, 8, 3, padding=3 // 2),
+                nn.Conv2d(1, 8, 9, padding=9 // 2),
+                nn.ReLU(),
                 nn.MaxPool2d(2),
                 nn.BatchNorm2d(8),
 
-                nn.Conv2d(8, 16, 3, padding=3 // 2),
+                nn.Conv2d(8, 16, 9, padding=9 // 2),
+                nn.ReLU(),
                 nn.MaxPool2d(2),
                 nn.BatchNorm2d(16),
 
-                nn.Conv2d(16, 8, 3, padding=3 // 2),
+                nn.Conv2d(16, 24, 9, padding=9 // 2),
+                nn.ReLU(),
+                nn.MaxPool2d(2),
+                nn.BatchNorm2d(24),
+
+                nn.Conv2d(24, 16, 9, padding=9 // 2),
+                nn.ReLU(),
+                nn.UpsamplingBilinear2d(scale_factor=2),
+                nn.BatchNorm2d(16),
+
+                nn.Conv2d(16, 8, 9, padding=9 // 2),
+                nn.ReLU(),
                 nn.UpsamplingBilinear2d(scale_factor=2),
                 nn.BatchNorm2d(8),
 
                 nn.Conv2d(8, 4, 3, padding=3 // 2),
+                nn.ReLU(),
                 nn.UpsamplingBilinear2d(scale_factor=2),
                 nn.BatchNorm2d(4),
 
-                nn.Conv2d(4, 2, 3, padding=3 // 2),
-                nn.UpsamplingBilinear2d(scale_factor=2),
-                nn.BatchNorm2d(2),
-
-                nn.Conv2d(2, 1, 1, padding=1),
-                nn.UpsamplingBilinear2d(size=img_size)
+                nn.Conv2d(4, 1, 1, padding=1),
+                nn.UpsamplingBilinear2d(size=img_size),
+                nn.Sigmoid()
 
                 #RotConv(1, 2, [3, 3], 1, 3 // 2, n_angles=6, mode=1),
                 #VectorMaxPool(2),
@@ -104,7 +111,7 @@ if __name__ == '__main__':
 
         def forward(self, x):
             x = self.main(x)
-            x = F.relu(x)
+            # x = F.relu(x)
             # x = x.view(x.size()[0], x.size()[1])
 
             return x
@@ -184,7 +191,10 @@ if __name__ == '__main__':
             pred.append(c.data.cpu().numpy())
         true = np.concatenate(true, 0)
         pred = np.concatenate(pred, 0)
-        acc = np.average(pred == true)
+        true = np.squeeze(true)
+        print(true.shape, pred.shape)
+        # pred = np.round(pred)
+        acc = np.average(np.isclose(pred, true, atol=0.5))
         return acc
 
     def getBatch(dataset, mode):
@@ -233,7 +243,7 @@ if __name__ == '__main__':
     train_set, val_set,  test_set = loadMnistRot()
 
     best_acc = 0
-    for epoch_no in range(10):
+    for epoch_no in range(3):
 
         #Random order for each epoch
         train_set_for_epoch = train_set[:] #Make a copy
@@ -276,14 +286,14 @@ if __name__ == '__main__':
         adjust_learning_rate(optimizer, epoch_no)
 
     # Finally test on test-set with the best model
-    net.load_state_dict(torch.load('best_model.pt'))
-    net.cuda()
+    # net.load_state_dict(torch.load('best_model.pt'))
+    # net.cuda()
     # print('Test', 'acc:', test(net, test_set[:], 'test'))
     net.eval()
     from PIL import Image
 
     loader = transforms.Compose([transforms.ToTensor()])
-    image = Image.fromarray(test_set[0][0][0, :, :], 'L')
+    image = Image.fromarray(test_set[100][0][0, :, :], 'L')
     image = loader(image).float()
     image = Variable(image, requires_grad=True)
     image = image.unsqueeze(0)  # this is for VGG, may not be needed for ResNet
