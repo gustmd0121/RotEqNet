@@ -38,80 +38,31 @@ if __name__ == '__main__':
             super(Net, self).__init__()
 
             self.main = nn.Sequential(
-                #nn.BatchNorm2d(1),
 
-                nn.Conv2d(1, 8, 9, padding=9 // 2),
-                nn.ReLU(),
-                nn.MaxPool2d(2),
-                nn.BatchNorm2d(8),
+                RotConv(1, 8, [3, 3], 1, 3 // 2, n_angles=6, mode=1),
+                VectorBatchNorm(8),
+                VectorMaxPool(2),
 
-                nn.Conv2d(8, 16, 9, padding=9 // 2),
-                nn.ReLU(),
-                nn.MaxPool2d(2),
-                nn.BatchNorm2d(16),
+                RotConv(8, 12, [3, 3], 1, 3 // 2, n_angles=6, mode=2),
+                VectorBatchNorm(12),
+                VectorMaxPool(2),
 
-                nn.Conv2d(16, 24, 9, padding=9 // 2),
-                nn.ReLU(),
-                nn.MaxPool2d(2),
-                nn.BatchNorm2d(24),
+                RotConv(12, 8, [3, 3], 1, 3 // 2, n_angles=6, mode=2),
+                VectorBatchNorm(8),
+                VectorUpsampling(scale_factor=2),
 
-                nn.Conv2d(24, 16, 9, padding=9 // 2),
-                nn.ReLU(),
-                nn.UpsamplingBilinear2d(scale_factor=2),
-                nn.BatchNorm2d(16),
+                RotConv(8, 4, [3, 3], 1, 1, n_angles=6, mode=2),
+                VectorBatchNorm(4),
+                VectorUpsampling(size=img_size),
 
-                nn.Conv2d(16, 8, 9, padding=9 // 2),
-                nn.ReLU(),
-                nn.UpsamplingBilinear2d(scale_factor=2),
-                nn.BatchNorm2d(8),
-
-                nn.Conv2d(8, 4, 3, padding=3 // 2),
-                nn.ReLU(),
-                nn.UpsamplingBilinear2d(scale_factor=2),
-                nn.BatchNorm2d(4),
-
-                nn.Conv2d(4, 1, 1, padding=1),
-                nn.UpsamplingBilinear2d(size=img_size),
-                nn.Sigmoid()
-
-                #RotConv(1, 2, [3, 3], 1, 3 // 2, n_angles=6, mode=1),
-                #VectorMaxPool(2),
-                #VectorBatchNorm(2),
-
-                # RotConv(2, 8, [3, 3], 1, 3 // 2, n_angles=6, mode=2),
-                # VectorMaxPool(2),
-                # VectorBatchNorm(8),
-                #
-                # RotConv(8, 16, [3, 3], 1, 3 // 2, n_angles=6, mode=2),
-                # VectorMaxPool(2),
-                # VectorBatchNorm(16),
-                #
-                # RotConv(16, 8, [3, 3], 1, 3 // 2, n_angles=6, mode=2),
-                # VectorUpsampling(scale_factor=2),
-                # VectorBatchNorm(8),
-                #
-                # RotConv(8, 4, [3, 3], 1, 3 // 2, n_angles=6, mode=2),
-                # VectorUpsampling(scale_factor=2),
-                # VectorBatchNorm(4),
-                #
-                # RotConv(4, 2, [3, 3], 1, 3 // 2, n_angles=6, mode=2),
-                # VectorUpsampling(scale_factor=2),
-                # VectorBatchNorm(2),
-                #
-                # RotConv(2, 1, [3, 3], 1, 1, n_angles=6, mode=2),
-                # VectorUpsampling(size=img_size),
-                # Vector2Magnitude(),
-
-                # nn.Conv2d(32, 64, 1),  # FC1
-                # nn.BatchNorm2d(64),
-                # nn.ReLU(),
-                # nn.Dropout2d(0.7),
-                # nn.Conv2d(1, 1, 1),  # FC2
+                RotConv(4, 2, [3, 3], 1, 1, n_angles=6, mode=2),
+                VectorBatchNorm(2),
+                RotConv(2, 2, [3, 3], 1, 1, n_angles=6, mode=2),
             )
 
         def forward(self, x):
             x = self.main(x)
-            # x = F.relu(x)
+            x = F.softmax(x[0])
             # x = x.view(x.size()[0], x.size()[1])
 
             return x
@@ -124,13 +75,13 @@ if __name__ == '__main__':
     net = Net()
 
     #criterion = nn.CrossEntropyLoss()
-    criterion = nn.BCELoss()
+    criterion = F1Loss()
     if type(gpu_no) == int:
         net.cuda(gpu_no)
 
     if True: #Current best setup using this implementation - error rate of 1.2%
         start_lr = 0.01
-        batch_size = 1
+        batch_size = 2
         optimizer = optim.Adam(net.parameters(), lr=start_lr)  # , weight_decay=0.01)
         use_test_time_augmentation = True
         use_train_time_augmentation = True
@@ -187,7 +138,7 @@ if __name__ == '__main__':
 
             loss = criterion(out, labels)
             _, c = torch.max(out, 1)
-            true.append(labels.data.cpu().numpy())
+            true.append(labels.data.cpu().numpy()[:, 0, :, :])
             pred.append(c.data.cpu().numpy())
         true = np.concatenate(true, 0)
         pred = np.concatenate(pred, 0)
@@ -212,7 +163,7 @@ if __name__ == '__main__':
             #    img = random_rotation(img)
 
             data.append(np.expand_dims(np.expand_dims(img, 0), 0))
-            labels.append(np.expand_dims(tmp[1].squeeze(), 0))
+            labels.append(tmp[1].squeeze())
         data = np.concatenate(data, 0)
         labels = np.array(labels, 'float32')
 
@@ -241,9 +192,8 @@ if __name__ == '__main__':
 
     #Load datasets
     train_set, val_set,  test_set = loadMnistRot()
-
     best_acc = 0
-    for epoch_no in range(3):
+    for epoch_no in range(5):
 
         #Random order for each epoch
         train_set_for_epoch = train_set[:] #Make a copy
@@ -293,7 +243,7 @@ if __name__ == '__main__':
     from PIL import Image
 
     loader = transforms.Compose([transforms.ToTensor()])
-    image = Image.fromarray(test_set[100][0][0, :, :], 'L')
+    image = Image.fromarray(train_set[50][0][0, :, :], 'L')
     image = loader(image).float()
     image = Variable(image, requires_grad=True)
     image = image.unsqueeze(0)  # this is for VGG, may not be needed for ResNet
@@ -301,5 +251,10 @@ if __name__ == '__main__':
     xyz = net(image)
     xyz = xyz.data.cpu().numpy()
     xyz = np.squeeze(xyz)
-    xyz = Image.fromarray(xyz, 'L')
-    xyz.show()
+    xyz = Image.fromarray(xyz[0, :, :]*255)
+    mask = Image.fromarray(train_set[50][1][0, :, :]*255)
+    orig = Image.fromarray(train_set[40][0][0, :, :]*255)
+    xyz.show(title='net')
+    mask.show(title='mask')
+    orig.show(title='orig')
+

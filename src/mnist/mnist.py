@@ -4,7 +4,7 @@ import sys
 sys.path.append('../')
 from utils import getGrid, rotate_grid_2D
 
-Filename = "Allogymnopleuri_#09"
+Filename = "Allogymnopleuri_#05"
 base_folder = "../../data/" + Filename + "/"
 
 def loadMnist(mode):
@@ -93,7 +93,9 @@ def loadMnistRot():
     print(imgs.shape)
     #imgs = [np.squeeze(subarray, axis=0) for subarray in np.split(imgs, imgs.shape[0],0)]
     imgs = np.split(imgs, imgs.shape[0],0)
-
+    for i in range(len(imgs)):
+        imgs[i] = imgs[i] / 255
+    print(np.max(imgs[20]))
     mask_data = np.load(base_folder + Filename + "_masks.npz")
     print(mask_data['ball'].shape)
     print(mask_data['ball'].shape)
@@ -102,6 +104,10 @@ def loadMnistRot():
     print(len(mask_data))
     print(imgs[0].shape)
     print(mask_data[0].shape)
+    for i in range(len(mask_data)):
+        mask_data[i] = np.squeeze(np.stack([mask_data[i], mask_data[i] * -1 + np.ones(mask_data[i].shape)], axis=0))
+    print(mask_data[0].shape)
+
     masks = list(zip(imgs, mask_data))
 
     return masks, masks, masks
