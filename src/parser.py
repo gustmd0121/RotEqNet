@@ -133,7 +133,7 @@ class Parser:
                 ball_props.write(str(x) + "\n")
 
 
-    def create_numpy_arrays(self, file, scale_factor, override = False, value = 1):
+    def create_numpy_arrays(self, file, scale_factor, override = False):
         if not(override) and os.path.exists(self.folder + file +"/" + file + "_masks.npz"):
             print("Ground truth numpy array file already exists.")
             return
@@ -155,15 +155,15 @@ class Parser:
         with open(ball_props_file) as f:
             ball_props = [literal_eval(line) for line in f.readlines()]
 
-        beetle_masks = self.__create_mask(beetle_props, scale_factor, value)
-        ball_masks = self.__create_mask(ball_props, scale_factor, value)
+        beetle_masks = self.__create_mask(beetle_props, scale_factor)
+        ball_masks = self.__create_mask(ball_props, scale_factor)
 
         print("Compressing and saving ground truth numpy array ...")
         np.savez_compressed(self.folder + file +"/" + file + "_masks", beetle=beetle_masks, ball=ball_masks)
 
 
 
-    def __create_mask(self, props, scale_factor, value):
+    def __create_mask(self, props, scale_factor):
         mask = np.zeros([int(self.img_size[0] * scale_factor), int(self.img_size[1] * scale_factor), len(props)], dtype='float32')
         for i in range(0, len(props)):
             index, pos, size, hasdir, dir, file = props[i]
@@ -172,7 +172,7 @@ class Parser:
 
             for x in range(int(pos_x * scale_factor), int((pos_x + size_w) * scale_factor)):
                 for y in range(int(pos_y * scale_factor), int((pos_y + size_h) * scale_factor)):
-                    mask[y][x][i] = value
+                    mask[y][x][i] = 1
         return mask
 
 
@@ -238,6 +238,8 @@ class Parser:
         np_beetle = beetle[:, :, i]
         np_img = full[i, :, :]
 
+        np_ball = np_ball * 255
+        np_beetle = np_beetle * 255
         img_ball = Image.fromarray(np_ball)
         img_beetle = Image.fromarray(np_beetle)
         img = Image.fromarray(np_img)
