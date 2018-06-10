@@ -5,6 +5,7 @@ import cv2
 from scipy import misc
 from PIL import Image
 from ast import literal_eval
+from random import randint
 
 class Parser:
     def __init__(self, folder):
@@ -133,7 +134,7 @@ class Parser:
                 ball_props.write(str(x) + "\n")
 
 
-    def create_numpy_arrays(self, file, scale_factor, override = False, value = 1):
+    def create_numpy_arrays(self, file, scale_factor, override = False, value = 1, cropTo=(0,0)):
         if not(override) and os.path.exists(self.folder + file +"/" + file + "_masks.npz"):
             print("Ground truth numpy array file already exists.")
             return
@@ -155,28 +156,61 @@ class Parser:
         with open(ball_props_file) as f:
             ball_props = [literal_eval(line) for line in f.readlines()]
 
-        beetle_masks = self.__create_mask(beetle_props, scale_factor, value)
-        ball_masks = self.__create_mask(ball_props, scale_factor, value)
+        beetle_masks, crop = self.__create_mask(beetle_props, scale_factor, value, crop_to=cropTo)
+        ball_masks, crop = self.__create_mask(ball_props, scale_factor, value, crop_to=cropTo, crop_array=crop)
 
         print("Compressing and saving ground truth numpy array ...")
         np.savez_compressed(self.folder + file +"/" + file + "_masks", beetle=beetle_masks, ball=ball_masks)
 
+        return crop
 
 
-    def __create_mask(self, props, scale_factor, value):
-        mask = np.zeros([int(self.img_size[0] * scale_factor), int(self.img_size[1] * scale_factor), len(props)], dtype='float32')
+
+    def __create_mask(self, props, scale_factor, value, crop_to=(0, 0), crop_array=None):
+        if crop_to == (0, 0):
+            crop_to = self.img_size
+        if crop_array == None:
+            crop = {}
+            crop['crop_to'] = crop_to
+        else:
+            crop = crop_array
+        mask = np.zeros([int(crop_to[0] * scale_factor), int(crop_to[1] * scale_factor), len(props)], dtype='float32')
         for i in range(0, len(props)):
             index, pos, size, hasdir, dir, file = props[i]
             pos_x, pos_y = pos
             size_w, size_h = size
 
+            if crop_to != self.img_size:
+                if crop_array == None:
+                    centered_margin_x = int((crop_to[1] - size_w) / 2)
+                    centered_margin_y = int((crop_to[0] - size_h) / 2)
+                    shift_x = randint(-int(centered_margin_x / 2), int(centered_margin_x / 2))
+                    shift_y = randint(-int(centered_margin_y / 2), int(centered_margin_y / 2))
+                    top_left_x = pos_x - centered_margin_x + shift_x
+                    top_left_y = pos_y - centered_margin_y + shift_y
+                    pos_x = centered_margin_x - shift_x
+                    pos_y = centered_margin_y - shift_y
+                    if top_left_x > self.img_size[1] - crop_to[1]:
+                        new_top_left_x = self.img_size[1] - crop_to[1]
+                        pos_x += top_left_x - new_top_left_x
+                        top_left_x = new_top_left_x
+                    if top_left_y > self.img_size[0] - crop_to[0]:
+                        new_top_left_y = self.img_size[0] - crop_to[0]
+                        pos_y += top_left_y - new_top_left_y
+                        top_left_y = new_top_left_y
+                    crop[i] = (top_left_x, top_left_y)
+                else:
+                    top_left_x, top_left_y = crop_array[i]
+                    pos_x -= top_left_x
+                    pos_y -= top_left_y
+
             for x in range(int(pos_x * scale_factor), int((pos_x + size_w) * scale_factor)):
                 for y in range(int(pos_y * scale_factor), int((pos_y + size_h) * scale_factor)):
                     mask[y][x][i] = value
-        return mask
+        return mask, crop
 
 
-    def generate_input(self, file, scale_factor, override = False):
+    def generate_input(self, file, scale_factor, override = False, crop_array=None):
         if not(override) and os.path.exists(self.folder + file +"/" + file + "_input.npz"):
             print("Input numpy array file already exists.")
             return
@@ -198,13 +232,20 @@ class Parser:
         if(len(ball_props)!=len(beetle_props)):
             print("Error: The number of ball labels is diffent from the number of beetle labels.")
 
-        data = np.zeros([len(ball_props), int(self.img_size[0]*scale_factor), int(self.img_size[1]*scale_factor)], dtype='float32')
+        if crop_array != None:
+            crop_to = crop_array['crop_to']
+        else:
+            crop_to = self.img_size
+        data = np.zeros([len(ball_props), int(crop_to[0]*scale_factor), int(crop_to[1]*scale_factor)], dtype='float32')
         for i in range(0, len(ball_props)):
             img_name = ball_props[i][5]
             if(img_name != beetle_props[i][5]):
                 print("Error: Different image files.")
             scaled_img = cv2.imread(self.folder + file + "/" + file + "_imgs/" + img_name)
-            scaled_img = cv2.resize(scaled_img, (int(self.img_size[1]*scale_factor), int(self.img_size[0]*scale_factor)), interpolation=cv2.INTER_CUBIC)
+            if crop_array != None:
+                top_left_x, top_left_y = crop_array[i]
+                scaled_img = scaled_img[top_left_y:top_left_y+crop_to[0], top_left_x:top_left_x+crop_to[1]]
+            scaled_img = cv2.resize(scaled_img, (int(crop_to[1]*scale_factor), int(crop_to[0]*scale_factor)), interpolation=cv2.INTER_CUBIC)
             scaled_img = cv2.cvtColor(scaled_img, cv2.COLOR_BGR2GRAY)
             data[i, :, :] = scaled_img
 
@@ -232,7 +273,7 @@ class Parser:
 
         if(len(ball[0][0]) < i or len(beetle[0][0]) < i or len(full) < i):
             print("Error: There are less than", i, "images.")
-            return;
+            return
 
         np_ball = ball[:, :, i]
         np_beetle = beetle[:, :, i]
