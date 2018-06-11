@@ -38,31 +38,35 @@ if __name__ == '__main__':
             super(Net, self).__init__()
 
             self.main = nn.Sequential(
+                nn.Conv2d(1, 8, [3, 3], 1, 3 // 2),
+                nn.ReLU(),
+                nn.BatchNorm2d(8),
+                nn.MaxPool2d(2),
 
-                RotConv(1, 8, [3, 3], 1, 3 // 2, n_angles=6, mode=1),
-                VectorBatchNorm(8),
-                VectorMaxPool(2),
+                nn.Conv2d(8, 12, [3, 3], 1, 3 // 2),
+                nn.ReLU(),
+                nn.BatchNorm2d(12),
+                nn.MaxPool2d(2),
 
-                RotConv(8, 12, [3, 3], 1, 3 // 2, n_angles=6, mode=2),
-                VectorBatchNorm(12),
-                VectorMaxPool(2),
+                nn.Conv2d(12, 8, [3, 3], 1, 3 // 2),
+                nn.ReLU(),
+                nn.BatchNorm2d(8),
+                nn.MaxPool2d(2),
 
-                RotConv(12, 8, [3, 3], 1, 3 // 2, n_angles=6, mode=2),
-                VectorBatchNorm(8),
-                VectorUpsampling(scale_factor=2),
+                nn.ConvTranspose2d(8, 4, [3, 3], 2, (0,1)),
+                nn.ReLU(),
+                nn.BatchNorm2d(4),
 
-                RotConv(8, 4, [3, 3], 1, 1, n_angles=6, mode=2),
-                VectorBatchNorm(4),
-                VectorUpsampling(size=img_size),
-
-                RotConv(4, 2, [3, 3], 1, 1, n_angles=6, mode=2),
-                VectorBatchNorm(2),
-                RotConv(2, 2, [3, 3], 1, 1, n_angles=6, mode=2),
+                nn.ConvTranspose2d(4, 2, [3, 3], 2),
+                nn.ReLU(),
+                nn.BatchNorm2d(2),
+                nn.ConvTranspose2d(2, 1, [3, 3], 2),
+                nn.UpsamplingBilinear2d(size=(540, 960))
             )
 
         def forward(self, x):
             x = self.main(x)
-            x = F.softmax(x[0])
+            x = F.sigmoid(x)
             # x = x.view(x.size()[0], x.size()[1])
 
             return x
@@ -75,7 +79,7 @@ if __name__ == '__main__':
     net = Net()
 
     #criterion = nn.CrossEntropyLoss()
-    criterion = F1Loss()
+    criterion = nn.BCELoss()
     if type(gpu_no) == int:
         net.cuda(gpu_no)
 
@@ -193,7 +197,7 @@ if __name__ == '__main__':
     #Load datasets
     train_set, val_set,  test_set = loadMnistRot()
     best_acc = 0
-    for epoch_no in range(5):
+    for epoch_no in range(10):
 
         #Random order for each epoch
         train_set_for_epoch = train_set[:] #Make a copy
@@ -224,14 +228,14 @@ if __name__ == '__main__':
 
 
         #Validation
-        acc = test(net, val_set[:], 'val')
-        print('Val',  'epoch:', epoch_no,  ' acc:', acc)
-
-        #Save model if better than previous
-        if acc > best_acc:
-            torch.save(net.state_dict(), 'best_model.pt')
-            best_acc = acc
-            print('Model saved')
+        # acc = test(net, val_set[:], 'val')
+        # print('Val',  'epoch:', epoch_no,  ' acc:', acc)
+        #
+        # #Save model if better than previous
+        # if acc > best_acc:
+        #     torch.save(net.state_dict(), 'best_model.pt')
+        #     best_acc = acc
+        #     print('Model saved')
 
         adjust_learning_rate(optimizer, epoch_no)
 
@@ -243,7 +247,7 @@ if __name__ == '__main__':
     from PIL import Image
 
     loader = transforms.Compose([transforms.ToTensor()])
-    image = Image.fromarray(train_set[50][0][0, :, :], 'L')
+    image = Image.fromarray(train_set[50][0][0, :, :])
     image = loader(image).float()
     image = Variable(image, requires_grad=True)
     image = image.unsqueeze(0)  # this is for VGG, may not be needed for ResNet
@@ -251,10 +255,9 @@ if __name__ == '__main__':
     xyz = net(image)
     xyz = xyz.data.cpu().numpy()
     xyz = np.squeeze(xyz)
-    xyz = Image.fromarray(xyz[0, :, :]*255)
+    xyz = Image.fromarray(xyz[:, :]*255)
     mask = Image.fromarray(train_set[50][1][0, :, :]*255)
-    orig = Image.fromarray(train_set[40][0][0, :, :]*255)
-    xyz.show(title='net')
-    mask.show(title='mask')
-    orig.show(title='orig')
-
+    orig = Image.fromarray(train_set[50][0][0, :, :]*255)
+    print(xyz.show(title='net'))
+    print(mask.show(title='mask'))
+    print(orig.show(title='orig'))

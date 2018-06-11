@@ -3,7 +3,7 @@ This code is an PyTorch implementation of the method proposed in:
 Rotation equivariant vector field networks (ICCV 2017)
 Diego Marcos, Michele Volpi, Nikos Komodakis,  Devis Tuia
 https://arxiv.org/abs/1612.09346
-https://github.com/dmarcosg/RotEqNet 
+https://github.com/dmarcosg/RotEqNet
 """
 from __future__ import division
 import torch.nn as nn
@@ -115,7 +115,7 @@ class RotConv(nn.Module):
 
                 #Compute magnitude (p)
                 outputs.append(  (u_out + v_out).unsqueeze(-1) )
-                
+
 
         # Get the maximum direction (Orientation Pooling)
         strength, max_ind = torch.max(torch.cat(outputs, -1), -1)
@@ -152,12 +152,12 @@ class VectorMaxPool(nn.Module):
         #Reshape to please pytorch
         s1 = u.size()
         s2 = max_inds.size()
-        
+
         max_inds = max_inds.view(s1[0], s1[1], s2[2] * s2[3])
-        
+
         u = u.view(s1[0], s1[1], s1[2] * s1[3])
         v = v.view(s1[0], s1[1], s1[2] * s1[3])
-        
+
         #Select u/v components according to max pool on magnitude
         u = torch.gather(u, 2, max_inds)
         v = torch.gather(v, 2, max_inds)
@@ -165,7 +165,7 @@ class VectorMaxPool(nn.Module):
         #Reshape back
         u = u.view(s1[0], s1[1], s2[2], s2[3])
         v = v.view(s1[0], s1[1], s2[2], s2[3])
-        
+
         return u,v
 
 class Vector2Magnitude(nn.Module):
@@ -310,4 +310,3 @@ class F1Loss(nn.Module):
 
     def forward(self, input, target):
         return self.f1measure_loss(target, input)
-
