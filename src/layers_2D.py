@@ -10,12 +10,12 @@ import torch.nn as nn
 from torch.nn import functional as F
 from torch.nn.parameter import Parameter
 import math
-from utils import  *
+from .utils import  *
 
 class RotConv(nn.Module):
 
     def __init__(self, in_channels, out_channels, kernel_size, stride=1,
-                 padding=0, dilation=1, n_angles = 8, mode=1):
+                 padding=0, dilation=1, n_angles = 8, mode=1, enable_relu=True):
         super(RotConv, self).__init__()
 
         kernel_size = ntuple(2)(kernel_size)
@@ -31,6 +31,8 @@ class RotConv(nn.Module):
         self.dilation = dilation
 
         self.mode = mode
+
+        self.enable_relu = enable_relu
 
         #Angles
         self.angles = np.linspace(0,360,n_angles, endpoint=False)
@@ -122,8 +124,13 @@ class RotConv(nn.Module):
 
         # Convert from polar representation q
         angle_map = max_ind.float() * (360. / len(self.angles) / 180. * np.pi)
-        u = F.relu(strength) * torch.cos(angle_map)
-        v = F.relu(strength) * torch.sin(angle_map)
+        #print(angle_map)
+        if self.enable_relu:
+            u = F.relu(strength) * torch.cos(angle_map)
+            v = F.relu(strength) * torch.sin(angle_map)
+        else:
+            u = strength * torch.cos(angle_map)
+            v = strength * torch.sin(angle_map)
 
 
         return u, v
@@ -177,7 +184,7 @@ class Vector2Magnitude(nn.Module):
         v = input[1]
 
         p = torch.sqrt(v ** 2 + u ** 2)
-        return p
+        return u
 
 class VectorBatchNorm(nn.Module):
     def     __init__(self, num_features, eps=1e-5, momentum=0.5, affine=True):
@@ -207,8 +214,11 @@ class VectorBatchNorm(nn.Module):
         """
         if self.training:
             #Compute std
-            std = self.std(input)
-
+            u = input[0]
+            v = input[1]
+            p = torch.Tensor.sqrt(u ** 2 + v ** 2)
+            std = torch.Tensor.std(p)
+            #std = self.std(input)
             alpha = self.weight / (std + self.eps)
 
             # update running variance
@@ -234,7 +244,7 @@ class VectorBatchNorm(nn.Module):
         p = torch.sqrt(u ** 2 + v ** 2)
 
         #Mean
-        mu = torch.mean(p,  0, keepdim=True)
+        mu = torch.Tensor.mean(p,  0, keepdim=True)
         mu = torch.mean(mu, 2, keepdim=True)
         mu = torch.mean(mu, 3, keepdim=True)
 

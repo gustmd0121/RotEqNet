@@ -2,10 +2,10 @@ import numpy as np
 import scipy.misc
 import sys
 sys.path.append('../')
-from utils import getGrid, rotate_grid_2D
+from ..utils import getGrid, rotate_grid_2D
 
-Filename = "Lamarcki_#09"
-base_folder = "../../data/" + Filename + "/"
+Filename = "Allogymnopleuri_#05"
+base_folder = "./data/" + Filename + "/"
 
 def loadMnist(mode):
     print('Loading MNIST', mode, 'images')
@@ -93,8 +93,7 @@ def loadMnistRot():
     #imgs = [np.squeeze(subarray, axis=0) for subarray in np.split(imgs, imgs.shape[0],0)]
     imgs = np.split(imgs, imgs.shape[0],0)
     for i in range(len(imgs)):
-        imgs[i] = imgs[i] / 255
-
+        imgs[i] = imgs[i] / 255 - 0.5
     print(np.max(imgs[20]))
     mask_data = np.load(base_folder + Filename + "_masks.npz")
     print(mask_data['ball'].shape)

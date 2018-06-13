@@ -8,13 +8,13 @@ from torch import optim
 import numpy as np
 from torch.autograd import Variable
 import random
-from mnist import loadMnistRot, random_rotation, linear_interpolation_2D
+from .mnist import loadMnistRot, random_rotation, linear_interpolation_2D
 from torchvision import transforms
 
 import sys
-sys.path.append('../') #Import
-from layers_2D import *
-from utils import getGrid
+#sys.path.append('../') #Import
+from ..layers_2D import *
+from ..utils import getGrid
 
 #!/usr/bin/env python
 __author__ = "Anders U. Waldeland"
@@ -28,7 +28,7 @@ https://arxiv.org/abs/1612.09346
 https://github.com/dmarcosg/RotEqNet
 """
 
-img_size = (540, 960)
+img_size = (300, 400)
 
 if __name__ == '__main__':
 
@@ -38,30 +38,70 @@ if __name__ == '__main__':
             super(Net, self).__init__()
 
             self.main = nn.Sequential(
-                nn.Conv2d(1, 8, [3, 3], 1, 3 // 2),
-                nn.ReLU(),
-                nn.BatchNorm2d(8),
-                nn.MaxPool2d(2),
+                # nn.Conv2d(1, 64, [3, 3], 1, 3 // 2),
+                # nn.ReLU(),
+                # nn.BatchNorm2d(64),
+                # nn.MaxPool2d(2),
+                # # #
+                # nn.Conv2d(64, 128, [3, 3], 1, 3 // 2),
+                # nn.ReLU(),
+                # nn.BatchNorm2d(128),
+                # nn.MaxPool2d(2),
+                # #
+                # nn.Conv2d(128, 64, [3, 3], 1, 3 // 2),
+                # nn.ReLU(),
+                # nn.BatchNorm2d(64),
+                # nn.Upsample(scale_factor=2),
+                # #
+                # nn.Conv2d(64, 1, [3, 3], 1, 1),
+                # nn.ReLU(),
+                # nn.BatchNorm2d(1),
+                # nn.Upsample(size=img_size),
+                # #
+                # nn.Conv2d(4, 2, [3, 3], 2),
+                # nn.ReLU(),
+                # nn.BatchNorm2d(2),
+                # nn.Upsample(scale_factor=2),
+                #
+                #
+                # nn.Conv2d(2, 1, [3, 3], 2),
+                # nn.UpsamplingBilinear2d(size=(540, 960))
 
-                nn.Conv2d(8, 12, [3, 3], 1, 3 // 2),
-                nn.ReLU(),
-                nn.BatchNorm2d(12),
-                nn.MaxPool2d(2),
+                #
+                # RotConv(1, 8, [3, 3], padding=3 // 2, n_angles=1, mode=1),
+                # VectorMaxPool(2),
+                #
+                # Vector2Magnitude(),
+                #
+                # nn.Conv2d(8, 1, (3, 3), padding=3 // 2),
+                # nn.Sigmoid(),
+                # nn.Upsample(size=(540, 960)),
 
-                nn.Conv2d(12, 8, [3, 3], 1, 3 // 2),
-                nn.ReLU(),
-                nn.BatchNorm2d(8),
-                nn.MaxPool2d(2),
+                RotConv(1, 8, [3, 3], 1, 3 // 2, n_angles=17, mode=1),
+                #VectorBatchNorm(8),
+                VectorMaxPool(2),
 
-                nn.ConvTranspose2d(8, 4, [3, 3], 2, (0,1)),
-                nn.ReLU(),
-                nn.BatchNorm2d(4),
+                RotConv(8, 12, [3, 3], 1, 3 // 2, n_angles=17, mode=2),
+                #VectorBatchNorm(12),
+                VectorMaxPool(2),
 
-                nn.ConvTranspose2d(4, 2, [3, 3], 2),
-                nn.ReLU(),
-                nn.BatchNorm2d(2),
-                nn.ConvTranspose2d(2, 1, [3, 3], 2),
-                nn.UpsamplingBilinear2d(size=(540, 960))
+                RotConv(12, 8, [3, 3], 1, 3 // 2, n_angles=17, mode=2),
+                VectorBatchNorm(8),
+                VectorUpsampling(scale_factor=2),
+
+                RotConv(8, 4, [3, 3], 1, 3 // 2, n_angles=17, mode=2),
+                VectorBatchNorm(4),
+                VectorUpsampling(scale_factor=2),
+
+                RotConv(4, 2, [3, 3], 1, 3 // 2, n_angles=17, mode=2),
+                VectorBatchNorm(2),
+                RotConv(2, 1, [3, 3], 1, 3 // 2, n_angles=17, mode=2),
+                VectorUpsampling(size=img_size),
+                Vector2Magnitude(),
+
+                #nn.Conv2d(1, 1, 1, padding=0),
+                #nn.Sigmoid(),
+
             )
 
         def forward(self, x):
@@ -85,7 +125,7 @@ if __name__ == '__main__':
 
     if True: #Current best setup using this implementation - error rate of 1.2%
         start_lr = 0.01
-        batch_size = 2
+        batch_size = 5
         optimizer = optim.Adam(net.parameters(), lr=start_lr)  # , weight_decay=0.01)
         use_test_time_augmentation = True
         use_train_time_augmentation = True
@@ -197,7 +237,7 @@ if __name__ == '__main__':
     #Load datasets
     train_set, val_set,  test_set = loadMnistRot()
     best_acc = 0
-    for epoch_no in range(10):
+    for epoch_no in range(5):
 
         #Random order for each epoch
         train_set_for_epoch = train_set[:] #Make a copy
