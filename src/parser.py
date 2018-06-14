@@ -11,9 +11,30 @@ class Parser:
     def __init__(self, folder):
         self.folder = folder
         self.img_size = (1080, 1920)
+        self.new_img_size = self.img_size
+        self.offset = []
 
 
-    def parse(self, file):
+    def create_scaled_files(self, file, scale_factor, override = True):
+        print("")
+        print("Parsing", file, "...")
+        self.__generate_prop(file)
+        self.__generate_ground_truth(file, override, scale_factor)
+        self.__generate_images(file, override, scale_factor)
+        print("Finished", file + ".")
+
+
+    def create_cropped_files(self, file, new_size, center = "beetle", override = True):
+        print("")
+        print("Parsing", file, "...")
+        self.__generate_prop(file)
+        self.__calc_offset(file, new_size, center)
+        self.__generate_ground_truth(file, override)
+        self.__generate_images(file, override)
+        print("Finished", file + ".")
+
+
+    def __generate_prop(self, file):
         print("Parsing grinder file ...")
 
         grndr_name = self.folder + file + "/" + file + ".grndr"
@@ -43,7 +64,6 @@ class Parser:
             json_heigt = 0
             json_has_direction = False
             json_direction = 0
-
             json_length = 0
 
             #get json length
@@ -99,50 +119,81 @@ class Parser:
             #sort data
             data_beetle.sort()
             #add missing
-            # for i in range(0,json_length):
-            #     if not(i in [x[0] for x in data_beetle]):
-            #         data_beetle.insert(i, (i, (0, 0), (0, 0), False, 0, ''))
             for i in range(0,len(data_ball)):
                 if not(data_ball[i][0] in [x[0] for x in data_beetle]):
                     data_beetle.insert(i, (i, (0, 0), (0, 0), False, 0, data_ball[i][5]))
-            #write data
-            for x in data_beetle:
-                #print(x)
-                beetle_props.write(str(x) + "\n")
 
             #sort data
             data_ball.sort()
             #add missing
-            # for i in range(0,json_length):
-            #     if not(i in [x[0] for x in data_ball]):
-            #         data_ball.insert(i, (i, (0, 0), (0, 0), False, 0, ''))
             for i in range(0,len(data_beetle)):
                 if not(data_beetle[i][0] in [x[0] for x in data_ball]):
                     data_ball.insert(i, (i, (0, 0), (0, 0), False, 0, data_beetle[i][5]))
+
+            #write data
+            for x in data_beetle:
+                beetle_props.write(str(x) + "\n")
 
             #check wheter files are 'equal'
             if(len(data_ball)!=len(data_beetle)):
                 print("Error: The number of ball labels is different from the number of beetle labels.")
 
+            self.offset = []
             for i in range(0,len(data_ball)):
+                self.offset.append([0, 0])
                 if(data_ball[i][5] != data_beetle[i][5]):
                     print("Error: Label number", i, "is different. Ball image:", data_ball[i][5], ", Beetle image:", data_beetle[i][5])
 
             #write data
             for x in data_ball:
-                #print(x)
                 ball_props.write(str(x) + "\n")
 
 
-    def create_numpy_arrays(self, file, scale_factor, override = False, value = 1, cropTo=(0,0)):
+    def __calc_offset(self, file, new_img_size, target = 'beetle'):
+        file_name = ''
+        if(target == 'beetle'):
+            file_name = self.folder + file + "/" + file + "_beetle_props.txt"
+        elif(target == 'ball'):
+            file_name = self.folder + file + "/" + file + "_ball_props.txt"
+        else:
+            print(target, "is no option.")
+            return
+
+        with open(file_name) as f:
+            props = [literal_eval(line) for line in f.readlines()]
+
+        if(len(props) != len(self.offset)):
+            print("You have to call parse before calc_offset().")
+            return
+
+        for i in range(0, len(props)):
+            index, pos, size, hasdir, dir, file = props[i]
+            pos_x, pos_y = pos
+            size_w, size_h = size
+
+            #center target
+            self.offset[i][0] = int(self.img_size[1] - (self.img_size[1] - pos_x - size_w/2 + new_img_size[1]/2))
+            self.offset[i][0] = self.offset[i][0] + randint(-int((new_img_size[1] - size_w) / 4), int((new_img_size[1] - size_w) / 4))
+            if self.offset[i][0] < 0:
+                self.offset[i][0] = 0
+            if(self.offset[i][0] + new_img_size[1] >= self.img_size[1]):
+                self.offset[i][0] = self.img_size[1] - new_img_size[1] - 1
+
+            self.offset[i][1] = int(self.img_size[0] - (self.img_size[0] - pos_y - size_h/2 + new_img_size[0]/2))
+            self.offset[i][1] = self.offset[i][1] + randint(-int((new_img_size[0] - size_h) / 4), int((new_img_size[0] - size_h) / 4))
+            if self.offset[i][1] < 0:
+                self.offset[i][1] = 0
+            if(self.offset[i][1] + new_img_size[0] >= self.img_size[0]):
+                self.offset[i][1] = self.img_size[0] - new_img_size[0] - 1
+        self.new_img_size = new_img_size
+
+
+    def __generate_ground_truth(self, file, override = False, scale_factor = -1):
         if not(override) and os.path.exists(self.folder + file +"/" + file + "_masks.npz"):
             print("Ground truth numpy array file already exists.")
             return
 
-        print("Generating ground truth numpy array ...")
-
         img_folder = self.folder + file + "/" + file + "_imgs/"
-
         beetle_props_file = self.folder + file + "/" + file + "_beetle_props.txt"
         ball_props_file = self.folder + file + "/" + file + "_ball_props.txt"
 
@@ -150,72 +201,59 @@ class Parser:
             print("No props files.")
             return
 
+        print("Generating ground truth numpy array ...")
+
         with open(beetle_props_file) as f:
             beetle_props = [literal_eval(line) for line in f.readlines()]
 
         with open(ball_props_file) as f:
             ball_props = [literal_eval(line) for line in f.readlines()]
 
-        beetle_masks, crop = self.__create_mask(beetle_props, scale_factor, value, crop_to=cropTo)
-        ball_masks, crop = self.__create_mask(ball_props, scale_factor, value, crop_to=cropTo, crop_array=crop)
+        if(scale_factor != -1):
+            beetle_masks = self.__create_scaled_mask(beetle_props, scale_factor)
+            ball_masks = self.__create_scaled_mask(ball_props, scale_factor)
+        else:
+            beetle_masks = self.__create_cropped_mask(beetle_props)
+            ball_masks = self.__create_cropped_mask(ball_props)
 
         print("Compressing and saving ground truth numpy array ...")
         np.savez_compressed(self.folder + file +"/" + file + "_masks", beetle=beetle_masks, ball=ball_masks)
 
-        return crop
 
 
-
-    def __create_mask(self, props, scale_factor, value, crop_to=(0, 0), crop_array=None):
-        if crop_to == (0, 0):
-            crop_to = self.img_size
-        if crop_array == None:
-            crop = {}
-            crop['crop_to'] = crop_to
-        else:
-            crop = crop_array
-        mask = np.zeros([int(crop_to[0] * scale_factor), int(crop_to[1] * scale_factor), len(props)], dtype='float32')
+    def __create_scaled_mask(self, props, scale_factor):
+        mask = np.zeros([int(self.img_size[0] * scale_factor), int(self.img_size[1] * scale_factor), len(props)], dtype='float32')
         for i in range(0, len(props)):
             index, pos, size, hasdir, dir, file = props[i]
             pos_x, pos_y = pos
             size_w, size_h = size
 
-            if crop_to != self.img_size:
-                if crop_array == None:
-                    centered_margin_x = int((crop_to[1] - size_w) / 2)
-                    centered_margin_y = int((crop_to[0] - size_h) / 2)
-                    shift_x = randint(-int(centered_margin_x / 2), int(centered_margin_x / 2))
-                    shift_y = randint(-int(centered_margin_y / 2), int(centered_margin_y / 2))
-                    top_left_x = pos_x - centered_margin_x + shift_x
-                    top_left_y = pos_y - centered_margin_y + shift_y
-                    pos_x = centered_margin_x - shift_x
-                    pos_y = centered_margin_y - shift_y
-                    if top_left_x > self.img_size[1] - crop_to[1]:
-                        new_top_left_x = self.img_size[1] - crop_to[1]
-                        pos_x += top_left_x - new_top_left_x
-                        top_left_x = new_top_left_x
-                    if top_left_y > self.img_size[0] - crop_to[0]:
-                        new_top_left_y = self.img_size[0] - crop_to[0]
-                        pos_y += top_left_y - new_top_left_y
-                        top_left_y = new_top_left_y
-                    crop[i] = (top_left_x, top_left_y)
-                else:
-                    top_left_x, top_left_y = crop_array[i]
-                    pos_x -= top_left_x
-                    pos_y -= top_left_y
-
             for x in range(int(pos_x * scale_factor), int((pos_x + size_w) * scale_factor)):
                 for y in range(int(pos_y * scale_factor), int((pos_y + size_h) * scale_factor)):
-                    mask[y][x][i] = value
-        return mask, crop
+                    mask[y][x][i] = 1
+        return mask
 
 
-    def generate_input(self, file, scale_factor, override = False, crop_array=None):
+    def __create_cropped_mask(self, props):
+        mask = np.zeros([self.new_img_size[0] , self.new_img_size[1], len(props)], dtype='float32')
+        for i in range(0, len(props)):
+            index, pos, size, hasdir, dir, file = props[i]
+            pos_x, pos_y = pos
+            size_w, size_h = size
+
+            for x in range(abs(pos_x - self.offset[i][0]), abs(pos_x + size_w - self.offset[i][0])):
+                for y in range(abs(pos_y - self.offset[i][1]), abs(pos_y + size_h - self.offset[i][1])):
+                    try:
+                        mask[y][x][i] = 1
+                    except (IndexError):
+                        pass
+        return mask
+
+
+    def __generate_images(self, file, override = False, scale_factor = -1):
         if not(override) and os.path.exists(self.folder + file +"/" + file + "_input.npz"):
             print("Input numpy array file already exists.")
             return
-
-        print("Generating input numpy array ...")
 
         ball_props_file = self.folder + file + "/" + file + "_ball_props.txt"
         beetle_props_file = self.folder + file + "/" + file + "_beetle_props.txt"
@@ -231,33 +269,36 @@ class Parser:
 
         if(len(ball_props)!=len(beetle_props)):
             print("Error: The number of ball labels is diffent from the number of beetle labels.")
+            return
 
-        if crop_array != None:
-            crop_to = crop_array['crop_to']
+        print("Generating input numpy array ...")
+
+        if(scale_factor != -1):
+            data = np.zeros([len(ball_props), int(self.img_size[0]*scale_factor), int(self.img_size[1]*scale_factor)], dtype='float32')
         else:
-            crop_to = self.img_size
-        data = np.zeros([len(ball_props), int(crop_to[0]*scale_factor), int(crop_to[1]*scale_factor)], dtype='float32')
+            data = np.zeros([len(ball_props), self.new_img_size[0], self.new_img_size[1]], dtype='float32')
         for i in range(0, len(ball_props)):
             img_name = ball_props[i][5]
             if(img_name != beetle_props[i][5]):
                 print("Error: Different image files.")
             scaled_img = cv2.imread(self.folder + file + "/" + file + "_imgs/" + img_name)
-            if crop_array != None:
-                top_left_x, top_left_y = crop_array[i]
-                scaled_img = scaled_img[top_left_y:top_left_y+crop_to[0], top_left_x:top_left_x+crop_to[1]]
-            scaled_img = cv2.resize(scaled_img, (int(crop_to[1]*scale_factor), int(crop_to[0]*scale_factor)), interpolation=cv2.INTER_CUBIC)
             scaled_img = cv2.cvtColor(scaled_img, cv2.COLOR_BGR2GRAY)
+            if(scale_factor != -1):
+                scaled_img = cv2.resize(scaled_img, (int(self.img_size[1]*scale_factor), int(self.img_size[0]*scale_factor)), interpolation=cv2.INTER_CUBIC)
+            else:
+                scaled_img = scaled_img[self.offset[i][1]:self.offset[i][1]+self.new_img_size[0], self.offset[i][0]:self.offset[i][0]+self.new_img_size[1]]
             data[i, :, :] = scaled_img
 
         print("Compressing and saving input numpy array ...")
         np.savez_compressed(self.folder + file +"/" + file + "_input", data=data)
 
 
+
     def set_img_size(self, img_size):
         self.img_size = (img_size[0], img_size[1])
 
 
-    def load_image(self, file, i):
+    def load_numpy(self, file, i):
         if (not os.path.isfile(self.folder + file +"/" + file + "_masks.npz") or not os.path.isfile(self.folder + file +"/" + file + "_input.npz")):
             print("No numpy files.")
             return
@@ -273,15 +314,19 @@ class Parser:
 
         if(len(ball[0][0]) < i or len(beetle[0][0]) < i or len(full) < i):
             print("Error: There are less than", i, "images.")
-            return
+            return;
 
         np_ball = ball[:, :, i]
         np_beetle = beetle[:, :, i]
         np_img = full[i, :, :]
 
+        np_ball = np_ball * 255
+        np_beetle = np_beetle * 255
         img_ball = Image.fromarray(np_ball)
         img_beetle = Image.fromarray(np_beetle)
         img = Image.fromarray(np_img)
+        # color image must contain integer values
+        # np_img = np.asarray(full[i, :, :], dtype="uint8")
 
         #Sometimes show() doesnt work without print ...
         print(img_beetle.show())
