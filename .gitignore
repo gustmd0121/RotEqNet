@@ -80,3 +80,6 @@ mnist/*/
 
 # Data Folder
 data/**
+
+#Pycache
+__pycache__/**
