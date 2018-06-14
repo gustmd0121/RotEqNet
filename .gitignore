@@ -83,3 +83,4 @@ data/**
 
 #Pycache
 __pycache__/**
+*.pyc
