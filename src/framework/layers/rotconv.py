@@ -6,7 +6,7 @@ from torch.nn.parameter import Parameter
 import math
 
 # Local imports
-from src.framework.utils.utils import *
+from ..utils import *
 
 
 class RotConv(nn.Module):

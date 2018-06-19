@@ -1,23 +1,24 @@
 # Global imports
 import torch
-import  torch.nn as nn
+import torch.nn as nn
 from torch.nn import functional as F
 from torch import optim
 import numpy as np
 from torch.autograd import Variable
 import random
 from torchvision import transforms
+import os
 
 # Local imports
 # Layers
-from .framework.layers.rotconv import RotConv
-from .framework.layers.vector_upsample import VectorUpsample
-from .framework.layers.vector_to_magnitude import VectorToMagnitude
-from .framework.layers.vector_batch_normalization import VectorBatchNorm
-from .framework.layers.spatial_pooling import SpatialPooling
-from .framework.layers.orientation_pooling import OrientationPooling
+from framework import RotConv
+from framework.layers import VectorUpsample
+from framework.layers import VectorToMagnitude
+from framework.layers import VectorBatchNorm
+from framework.layers import SpatialPooling
+from framework.layers import OrientationPooling
 # Utils
-from .framework.utils.utils import getGrid
+from framework.utils.utils import getGrid
 
 #!/usr/bin/env python
 __author__ = "Anders U. Waldeland"
@@ -32,10 +33,12 @@ https://github.com/dmarcosg/RotEqNet
 """
 
 epoch_size = 5
-batch_size = 5
+batch_size = 2
 train_file = "Allogymnopleuri_#05"
 test_file = "Allogymnopleuri_#05"
 base_folder = "./data/"
+if not os.path.isdir(base_folder):
+    base_folder = "." + base_folder
 img_size = (300, 400)
 
 if __name__ == '__main__':
@@ -83,7 +86,7 @@ if __name__ == '__main__':
             return x
 
 
-    gpu_no =  0 # Set to False for cpu-version
+    gpu_no =  False#0 # Set to False for cpu-version
 
     #Setup net, loss function, optimizer and hyper parameters
     net = Net()
