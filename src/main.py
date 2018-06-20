@@ -1,4 +1,4 @@
-from src.parser.parser import Parser
+from parser import Parser
 import os
 
 data_folder = "./data/"
