@@ -33,7 +33,7 @@ https://github.com/dmarcosg/RotEqNet
 """
 
 epoch_size = 5
-batch_size = 2
+batch_size = 500
 train_file = "Allogymnopleuri_#05"
 test_file = "Allogymnopleuri_#05"
 base_folder = "./data/"
@@ -49,7 +49,7 @@ if __name__ == '__main__':
             super(Net, self).__init__()
 
             self.main = nn.Sequential(
-                RotConv(1, 8, [3, 3], 1, 3 // 2, n_angles=17, mode=1),
+                RotConv(3, 8, [3, 3], 1, 3 // 2, n_angles=17, mode=1),
                 OrientationPooling(),
                 #VectorBatchNorm(8),
                 SpatialPooling(2),
@@ -86,7 +86,7 @@ if __name__ == '__main__':
             return x
 
 
-    gpu_no =  False#0 # Set to False for cpu-version
+    gpu_no =  0 # Set to False for cpu-version
 
     #Setup net, loss function, optimizer and hyper parameters
     net = Net()
@@ -277,7 +277,8 @@ if __name__ == '__main__':
     from PIL import Image
 
     loader = transforms.Compose([transforms.ToTensor()])
-    image = Image.fromarray(test_set[50][0][0, :, :])
+    print(test_set[50][0][0, :, :, :].shape)
+    image = Image.fromarray(test_set[50][0][0, :, :, :].astype('uint8'))
     image = loader(image).float()
     image = Variable(image, requires_grad=True)
     image = image.unsqueeze(0)  # this is for VGG, may not be needed for ResNet
@@ -287,7 +288,7 @@ if __name__ == '__main__':
     xyz = np.squeeze(xyz)
     xyz = Image.fromarray(xyz[:, :]*255)
     mask = Image.fromarray(test_set[50][1][0, :, :]*255)
-    orig = Image.fromarray((test_set[50][0][0, :, :]+0.5)*255)
+    orig = Image.fromarray(test_set[50][0][0, :, :, :].astype('uint8'))
     print(xyz.show(title='net'))
     print(mask.show(title='mask'))
     print(orig.show(title='orig'))

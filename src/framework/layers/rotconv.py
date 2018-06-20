@@ -70,14 +70,20 @@ class RotConv(nn.Module):
     def forward(self, input):
         outputs = []
 
+
         if self.mode == 1:
+            #out = []
             # Loop through the different filter-transformations
             for ind, interp_vars in enumerate(self.interp_vars):
                 # Apply rotation
                 weight = apply_transform(self.weight1, interp_vars, self.kernel_size)
 
                 # Do convolution
+                #print(input[0, :, :, :, 0].unsqueeze(3).shape)
                 out = F.conv2d(input, weight, None, self.stride, self.padding, self.dilation)
+                # out[0] = F.conv2d(input[0, :, :, :, 0].unsqueeze(1), weight, None, self.stride, self.padding, self.dilation)
+                # out[1] = F.conv2d(input[0, :, :, :, 1].unsqueeze(1), weight, None, self.stride, self.padding, self.dilation)
+                # out[2] = F.conv2d(input[0, :, :, :, 2].unsqueeze(1), weight, None, self.stride, self.padding, self.dilation)
                 outputs.append(out.unsqueeze(-1))
 
         elif self.mode == 2:
