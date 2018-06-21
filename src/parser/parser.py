@@ -274,20 +274,20 @@ class Parser:
         print("Generating input numpy array ...")
 
         if(scale_factor != -1):
-            data = np.zeros([len(ball_props), int(self.img_size[0]*scale_factor), int(self.img_size[1]*scale_factor), 3], dtype='float32')
+            data = np.zeros([len(ball_props), int(self.img_size[0]*scale_factor), int(self.img_size[1]*scale_factor)], dtype='float32')
         else:
-            data = np.zeros([len(ball_props), self.new_img_size[0], self.new_img_size[1], 3], dtype='float32')
+            data = np.zeros([len(ball_props), self.new_img_size[0], self.new_img_size[1]], dtype='float32')
         for i in range(0, len(ball_props)):
             img_name = ball_props[i][5]
             if(img_name != beetle_props[i][5]):
                 print("Error: Different image files.")
             scaled_img = cv2.imread(self.folder + file + "/" + file + "_imgs/" + img_name)
-            scaled_img = cv2.cvtColor(scaled_img, cv2.COLOR_BGR2RGB)
+            scaled_img = cv2.cvtColor(scaled_img, cv2.COLOR_BGR2GRAY)
             if(scale_factor != -1):
                 scaled_img = cv2.resize(scaled_img, (int(self.img_size[1]*scale_factor), int(self.img_size[0]*scale_factor)), interpolation=cv2.INTER_CUBIC)
             else:
-                scaled_img = scaled_img[self.offset[i][1]:self.offset[i][1]+self.new_img_size[0], self.offset[i][0]:self.offset[i][0]+self.new_img_size[1], :]
-            data[i, :, :, :] = scaled_img
+                scaled_img = scaled_img[self.offset[i][1]:self.offset[i][1]+self.new_img_size[0], self.offset[i][0]:self.offset[i][0]+self.new_img_size[1]]
+            data[i, :, :] = scaled_img
 
         print("Compressing and saving input numpy array ...")
         np.savez_compressed(self.folder + file +"/" + file + "_input", data=data)
@@ -318,8 +318,7 @@ class Parser:
 
         np_ball = ball[:, :, i]
         np_beetle = beetle[:, :, i]
-        # np_img = full[i, :, :]
-        np_img = np.asarray(full[i, :, :], dtype="uint8")
+        np_img = full[i, :, :]
 
         np_ball = np_ball * 255
         np_beetle = np_beetle * 255
@@ -327,6 +326,7 @@ class Parser:
         img_beetle = Image.fromarray(np_beetle)
         img = Image.fromarray(np_img)
         # color image must contain integer values
+        # np_img = np.asarray(full[i, :, :], dtype="uint8")
 
         #Sometimes show() doesnt work without print ...
         print(img_beetle.show())
