@@ -1,7 +1,9 @@
-from src.parser.parser import Parser
+from parser import Parser
 import os
 
 data_folder = "./data/"
+if not os.path.isdir(data_folder):
+    data_folder = "." + data_folder
 
 p = Parser(data_folder)
 for sub_folder in os.listdir(data_folder):
