@@ -12,4 +12,7 @@ class VectorToMagnitude(nn.Module):
         v = input[1]
 
         p = torch.sqrt(v ** 2 + u ** 2)
-        return u
+        # p = torch.sign(torch.sign(u) + torch.sign(v) + 0.1) * p
+        angle = torch.atan(torch.abs(u / v))
+
+        return p, angle

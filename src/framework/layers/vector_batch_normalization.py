@@ -34,8 +34,19 @@ class VectorBatchNorm(nn.Module):
             # Compute std
             u = input[0]
             v = input[1]
+
+            #Vector to magnitude
             p = torch.sqrt(u ** 2 + v ** 2)
-            std = torch.std(p)
+
+            #We want to normalize the vector magnitudes,
+            #therefore we ommit the mean (var = (p-p.mean())**2)
+            #since we do not want to move the center of the vectors.
+
+            var = (p)**2
+            var = torch.mean(var, 0, keepdim=True)
+            var = torch.mean(var, 2, keepdim=True)
+            var = torch.mean(var, 3, keepdim=True)
+            std = torch.sqrt(var)
 
             alpha = self.weight / (std + self.eps)
 

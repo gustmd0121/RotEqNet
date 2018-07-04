@@ -13,8 +13,9 @@ class OrientationPooling(nn.Module):
 
     def forward(self, input):
         rotconv_outputs = input[0]
+        # print("OrientationPooling:", len(rotconv_outputs), len(rotconv_outputs[0]), len(rotconv_outputs[0][0]), len(rotconv_outputs[0][0][0]), len(rotconv_outputs[0][0][0][0]))
         angles = input[1]
-        # Get the maximum direction
+        # Get the maximum direction#
         strength, max_ind = torch.max(torch.cat(rotconv_outputs, -1), -1)
 
         # Convert from polar representation

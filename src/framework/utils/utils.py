@@ -135,7 +135,7 @@ def compute_interpolation_grids(grid, kernel_dims, mask):
 
     return inds_0, inds_1, weights, mask
 
-def apply_transform(filter, interp_vars, filters_size, old_bilinear_interpolation=True):
+def apply_transform(filter, interp_vars, filters_size, old_bilinear_interpolation=False):
     """ Apply a transform specified by the interpolation_variables to a filter """
 
     dim = 2 if len(filter.size())==4 else 3
@@ -156,7 +156,7 @@ def apply_transform(filter, interp_vars, filters_size, old_bilinear_interpolatio
 
             [x0_0, x1_0], [x0_1, x1_1], [w0, w1] = interp_vars
 
-            a = torch.gather(torch.gather(filter, 2, x0_0), 3, x1_0) * (1 - w0) * (1 - w1)
+            a = torch.gather(torch.gather(filter, 2, x0_0), 3, x1_0)* (1 - w0) * (1 - w1)
             b = torch.gather(torch.gather(filter, 2, x0_1), 3, x1_0)* w0 * (1 - w1)
             c = torch.gather(torch.gather(filter, 2, x0_0), 3, x1_1)* (1 - w0) * w1
             d = torch.gather(torch.gather(filter, 2, x0_1), 3, x1_1)* w0 * w1
@@ -165,21 +165,54 @@ def apply_transform(filter, interp_vars, filters_size, old_bilinear_interpolatio
         rotated_filter = rotated_filter.view(filter.size()[0],filter.size()[1],filters_size[0],filters_size[1])
 
     elif dim == 3:
-        [x0_0, x1_0, x2_0], [x0_1, x1_1, x2_1], [w0, w1, w2] = interp_vars
+        if old_bilinear_interpolation:
+            [x0_0, x1_0, x2_0], [x0_1, x1_1, x2_1], [w0, w1, w2] = interp_vars
 
-        rotated_filter = (filter[x0_0, x1_0, x2_0] * (1 - w0) * (1 - w1)* (1 - w2) +
-                          filter[x0_1, x1_0, x2_0] * w0       * (1 - w1)* (1 - w2) +
-                          filter[x0_0, x1_1, x2_0] * (1 - w0) * w1      * (1 - w2) +
-                          filter[x0_1, x1_1, x2_0] * w0       * w1      * (1 - w2) +
-                          filter[x0_0, x1_0, x2_1] * (1 - w0) * (1 - w1)* w2 +
-                          filter[x0_1, x1_0, x2_1] * w0       * (1 - w1)* w2 +
-                          filter[x0_0, x1_1, x2_1] * (1 - w0) * w1      * w2 +
-                          filter[x0_1, x1_1, x2_1] * w0       * w1      * w2)
+            rotated_filter = (filter[x0_0, x1_0, x2_0] * (1 - w0) * (1 - w1)* (1 - w2) +
+                              filter[x0_1, x1_0, x2_0] * w0       * (1 - w1)* (1 - w2) +
+                              filter[x0_0, x1_1, x2_0] * (1 - w0) * w1      * (1 - w2) +
+                              filter[x0_1, x1_1, x2_0] * w0       * w1      * (1 - w2) +
+                              filter[x0_0, x1_0, x2_1] * (1 - w0) * (1 - w1)* w2 +
+                              filter[x0_1, x1_0, x2_1] * w0       * (1 - w1)* w2 +
+                              filter[x0_0, x1_1, x2_1] * (1 - w0) * w1      * w2 +
+                              filter[x0_1, x1_1, x2_1] * w0       * w1      * w2)
+        else:
+
+            # Expand dimmentions to fit filter
+            interp_vars = [[inner_el.expand_as(filter) for inner_el in outer_el] for outer_el in interp_vars]
+
+            [x0_0, x1_0, x2_0], [x0_1, x1_1, x2_1], [w0, w1, w2] = interp_vars
+
+            a = torch.gather(torch.gather(torch.gather(filter, 0, x0_0), 1, x1_0), 2, x2_0)* (1 - w0) * (1 - w1)* (1 - w2)
+            b = torch.gather(torch.gather(torch.gather(filter, 0, x0_1), 1, x1_0), 2, x2_0)* w0       * (1 - w1)* (1 - w2)
+            c = torch.gather(torch.gather(torch.gather(filter, 0, x0_0), 1, x1_1), 2, x2_0)* (1 - w0) * w1      * (1 - w2)
+            d = torch.gather(torch.gather(torch.gather(filter, 0, x0_1), 1, x1_1), 2, x2_0)* w0       * w1      * (1 - w2)
+            e = torch.gather(torch.gather(torch.gather(filter, 0, x0_0), 1, x1_0), 2, x2_1)* (1 - w0) * (1 - w1)* w2
+            f = torch.gather(torch.gather(torch.gather(filter, 0, x0_1), 1, x1_0), 2, x2_1)* w0       * (1 - w1)* w2
+            g = torch.gather(torch.gather(torch.gather(filter, 0, x0_0), 1, x1_1), 2, x2_1)* (1 - w0) * w1      * w2
+            h = torch.gather(torch.gather(torch.gather(filter, 0, x0_1), 1, x1_1), 2, x2_1)* w0       * w1      * w2
+            rotated_filter = a+b+c+d+e+f+g+h
 
         rotated_filter = rotated_filter.view(filter.size()[0], filter.size()[1], filters_size[0], filters_size[1], filters_size[2])
 
     return rotated_filter
 
+
+def list_shape(l):        
+    try:
+        print(len(l))
+        print(len(l[0]))
+        print(len(l[0][0]))
+        print(len(l[0][0][0]))
+        print(len(l[0][0][0][0]))
+        print(len(l[0][0][0][0][0]))
+        print(len(l[0][0][0][0][0][0]))
+        print(len(l[0][0][0][0][0][0][0]))
+        print(len(l[0][0][0][0][0][0][0][0]))
+        print(len(l[0][0][0][0][0][0][0][0][0]))
+        print(len(l[0][0][0][0][0][0][0][0][0][0]))
+    except (TypeError):
+        pass
 
 
 if __name__ == '__main__':
@@ -203,7 +236,5 @@ if __name__ == '__main__':
     print(w)
     for angle in [0,90,45,180,65,10]:
         print(angle,'degrees')
-        print(apply_transform(w, get_filter_rotation_transforms(ks, angle)[:-1], ks,old_bilinear_interpolation=True) * Variable(get_filter_rotation_transforms(ks, angle)[-1]))
+        print(apply_transform(w, get_filter_rotation_transforms(ks, angle)[:-1], ks,old_bilinear_interpolation=False) * Variable(get_filter_rotation_transforms(ks, angle)[-1]))
         print('Difference', torch.sum(apply_transform(w, get_filter_rotation_transforms(ks, angle)[:-1], ks,old_bilinear_interpolation=False) * Variable( get_filter_rotation_transforms(ks, angle)[-1]) - apply_transform(w, get_filter_rotation_transforms(ks, angle)[:-1], ks,old_bilinear_interpolation=True) * Variable(get_filter_rotation_transforms(ks, angle)[-1])))
-
-

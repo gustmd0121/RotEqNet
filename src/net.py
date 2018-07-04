@@ -18,7 +18,7 @@ from framework.layers import VectorBatchNorm
 from framework.layers import SpatialPooling
 from framework.layers import OrientationPooling
 # Utils
-from framework.utils.utils import getGrid
+from framework.utils.utils import *
 
 #!/usr/bin/env python
 __author__ = "Anders U. Waldeland"
@@ -32,8 +32,8 @@ https://arxiv.org/abs/1612.09346
 https://github.com/dmarcosg/RotEqNet
 """
 
-epoch_size = 5
-batch_size = 2
+epoch_size = 1
+batch_size = 3
 train_file = "Allogymnopleuri_#05"
 test_file = "Allogymnopleuri_#05"
 base_folder = "./data/"
@@ -49,7 +49,7 @@ if __name__ == '__main__':
             super(Net, self).__init__()
 
             self.main = nn.Sequential(
-                RotConv(1, 8, [3, 3], 1, 3 // 2, n_angles=17, mode=1),
+                RotConv(2, 8, [3, 3], 1, 3 // 2, n_angles=17, mode=1),
                 OrientationPooling(),
                 #VectorBatchNorm(8),
                 SpatialPooling(2),
@@ -82,17 +82,19 @@ if __name__ == '__main__':
 
         def forward(self, x):
             x = self.main(x)
-            x = F.sigmoid(x)
-            return x
+            y = F.sigmoid(x[0])
+            z = F.relu(x[1])
+            return (y, z)
 
 
-    gpu_no =  False#0 # Set to False for cpu-version
+    gpu_no =  0 # Set to False for cpu-version
 
     #Setup net, loss function, optimizer and hyper parameters
     net = Net()
 
     # Net Parameters
-    criterion = nn.BCELoss()
+    criterion1 = nn.BCELoss()
+    criterion2 = nn.MSELoss()
     if type(gpu_no) == int:
         net.cuda(gpu_no)
 
@@ -201,11 +203,14 @@ if __name__ == '__main__':
     def load_data(train, test):
         # trainfiles
         imgs =  np.load(base_folder + train + "/" + train + "_input.npz")['data']
-        imgs = np.split(imgs, imgs.shape[0],0)
+        print(imgs.shape)
+        #imgs = np.split(imgs, imgs.shape[0],0)
         for i in range(len(imgs)):
-            imgs[i] = imgs[i] / 255 - 0.5
-        mask_data = np.load(base_folder + train + "/" + train + "_masks.npz")
-        mask_data = np.split(mask_data['beetle'], mask_data['beetle'].shape[2],2)
+            imgs[i][0] = imgs[i][0] / 255 - 0.5
+
+        mask_data = np.load(base_folder + train + "/" + train + "_masks.npz")['beetle']
+        print(mask_data.shape)
+        #mask_data = np.split(mask_data['beetle'], mask_data['beetle'].shape[0],0)
         # for i in range(len(mask_data)):
         #     mask_data[i] = np.squeeze(np.stack([mask_data[i], mask_data[i] * -1 + np.ones(mask_data[i].shape)], axis=0))
         train = list(zip(imgs, mask_data))
@@ -213,11 +218,12 @@ if __name__ == '__main__':
 
         # testfiles
         imgs =  np.load(base_folder + test + "/" + test + "_input.npz")['data']
-        imgs = np.split(imgs, imgs.shape[0],0)
+        #imgs = np.split(imgs, imgs.shape[0],0)
         for i in range(len(imgs)):
-            imgs[i] = imgs[i] / 255 - 0.5
-        mask_data = np.load(base_folder + test + "/" + test + "_masks.npz")
-        mask_data = np.split(mask_data['beetle'], mask_data['beetle'].shape[2],2)
+            imgs[i][0] = imgs[i][0] / 255 - 0.5
+
+        mask_data = np.load(base_folder + test + "/" + test + "_masks.npz")['beetle']
+        #mask_data = np.split(mask_data['beetle'], mask_data['beetle'].shape[0],0)
         # for i in range(len(mask_data)):
         #     mask_data[i] = np.squeeze(np.stack([mask_data[i], mask_data[i] * -1 + np.ones(mask_data[i].shape)], axis=0))
         test = list(zip(imgs, mask_data))
@@ -242,8 +248,8 @@ if __name__ == '__main__':
 
             data, labels = getBatch(train_set_for_epoch, 'train')
             out = net( data )
-            loss = criterion( out,labels )
-            _, c = torch.max(out, 1)
+            loss = criterion1( out[0],labels[0, 0, :, :] )
+            _, c = torch.max(out[0], 1)
             loss.backward()
 
             optimizer.step()
@@ -277,19 +283,24 @@ if __name__ == '__main__':
     from PIL import Image
 
     loader = transforms.Compose([transforms.ToTensor()])
-    image = Image.fromarray(test_set[50][0][0, :, :])
-    image = loader(image).float()
-    image = Variable(image, requires_grad=True)
-    image = image.unsqueeze(0)  # this is for VGG, may not be needed for ResNet
+    # image = Image.fromarray(test_set[50][0])
+    list_shape(test_set[50][0])
+    image = loader(test_set[50][0]).float()
+    image.resize_((2, 300, 400))
+    image.unsqueeze_(0)
+    #u = image[:,0,:,:]
+    #u.unsqueeze_(0)
+    #print(u.shape)
+    # image = Variable(image, requires_grad=True)
+    # image = image.unsqueeze(0)  # this is for VGG, may not be needed for ResNet
     image = image.cuda()
     xyz = net(image)
     xyz = xyz.data.cpu().numpy()
     xyz = np.squeeze(xyz)
-    xyz = Image.fromarray(xyz[:, :]*255)
-    mask = Image.fromarray(test_set[50][1][0, :, :]*255)
-    orig = Image.fromarray((test_set[50][0][0, :, :]+0.5)*255)
+    xyz = Image.fromarray(xyz[0, :, :]*255)
+    orig = Image.fromarray((test_set[50][0]+0.5)*255)
     print(xyz.show(title='net'))
-    print(mask.show(title='mask'))
+    # print(mask.show(title='mask'))
     print(orig.show(title='orig'))
 
 
@@ -376,7 +387,7 @@ if __name__ == '__main__':
 #         train_data[:, :, j] =  random_rotation(sample[0])
 #         train_label[j] = sample[1]
 #         i += 1
-#
+#pe(l):pe(l):
 #     for j in range(2000):
 #         sample = all_samples[i]
 #         val_data[:, :, j] = random_rotation(sample[0])

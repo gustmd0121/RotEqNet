@@ -222,7 +222,7 @@ class Parser:
 
 
     def __create_scaled_mask(self, props, scale_factor):
-        mask = np.zeros([int(self.img_size[0] * scale_factor), int(self.img_size[1] * scale_factor), len(props)], dtype='float32')
+        mask = np.zeros([len(props), 2, int(self.img_size[0] * scale_factor), int(self.img_size[1] * scale_factor)], dtype='float32')
         for i in range(0, len(props)):
             index, pos, size, hasdir, dir, file = props[i]
             pos_x, pos_y = pos
@@ -230,12 +230,14 @@ class Parser:
 
             for x in range(int(pos_x * scale_factor), int((pos_x + size_w) * scale_factor)):
                 for y in range(int(pos_y * scale_factor), int((pos_y + size_h) * scale_factor)):
-                    mask[y][x][i] = 1
+                    mask[i][0][y][x] = 1
+                    if hasdir:
+                        mask[i][1][y][x] = dir
         return mask
 
 
     def __create_cropped_mask(self, props):
-        mask = np.zeros([self.new_img_size[0] , self.new_img_size[1], len(props)], dtype='float32')
+        mask = np.zeros([len(props), 2, self.new_img_size[0] , self.new_img_size[1]], dtype='float32')
         for i in range(0, len(props)):
             index, pos, size, hasdir, dir, file = props[i]
             pos_x, pos_y = pos
@@ -244,7 +246,9 @@ class Parser:
             for x in range(abs(pos_x - self.offset[i][0]), abs(pos_x + size_w - self.offset[i][0])):
                 for y in range(abs(pos_y - self.offset[i][1]), abs(pos_y + size_h - self.offset[i][1])):
                     try:
-                        mask[y][x][i] = 1
+                        mask[i][0][y][x] = 1
+                        if hasdir:
+                            mask[i][1][y][x] = dir
                     except (IndexError):
                         pass
         return mask
@@ -274,9 +278,9 @@ class Parser:
         print("Generating input numpy array ...")
 
         if(scale_factor != -1):
-            data = np.zeros([len(ball_props), int(self.img_size[0]*scale_factor), int(self.img_size[1]*scale_factor)], dtype='float32')
+            data = np.zeros([len(ball_props), 2, int(self.img_size[0]*scale_factor), int(self.img_size[1]*scale_factor)], dtype='float32')
         else:
-            data = np.zeros([len(ball_props), self.new_img_size[0], self.new_img_size[1]], dtype='float32')
+            data = np.zeros([len(ball_props), 2, self.new_img_size[0], self.new_img_size[1]], dtype='float32')
         for i in range(0, len(ball_props)):
             img_name = ball_props[i][5]
             if(img_name != beetle_props[i][5]):
@@ -287,7 +291,12 @@ class Parser:
                 scaled_img = cv2.resize(scaled_img, (int(self.img_size[1]*scale_factor), int(self.img_size[0]*scale_factor)), interpolation=cv2.INTER_CUBIC)
             else:
                 scaled_img = scaled_img[self.offset[i][1]:self.offset[i][1]+self.new_img_size[0], self.offset[i][0]:self.offset[i][0]+self.new_img_size[1]]
-            data[i, :, :] = scaled_img
+            data[i, 0, :, :] = scaled_img
+
+            if(scale_factor != -1):
+                data[i, 1, :, :] = np.zeros([int(self.img_size[0]*scale_factor), int(self.img_size[1]*scale_factor)], dtype='float32')
+            else:
+                data[i, 1, :, :] = np.zeros([self.new_img_size[0], self.new_img_size[1]], dtype='float32')
 
         print("Compressing and saving input numpy array ...")
         np.savez_compressed(self.folder + file +"/" + file + "_input", data=data)
