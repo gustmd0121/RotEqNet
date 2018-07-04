@@ -73,19 +73,11 @@ class RotConv(nn.Module):
 
     def forward(self, input):
         outputs = []
-
         if self.mode == 1:
-            if(len(input) == 1):
-                u = input[0][0]
-                u.unsqueeze_(0)
-                u.unsqueeze_(0)
-                print(self.weight1.shape)
-                v = input[0][1]
-                v.unsqueeze_(0)
-                v.unsqueeze_(0)
-            else:
-                u = input[:][0]
-                v = input[:][1]
+            u = input[:, 0, :, :]
+            u.unsqueeze_(1)
+            v = input[:, 1, :, :]
+            v.unsqueeze_(1)
             # Loop through the different filter-transformations
             for ind, interp_vars in enumerate(self.interp_vars):
                 angle = self.angle_tensors[ind]

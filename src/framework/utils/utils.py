@@ -198,21 +198,27 @@ def apply_transform(filter, interp_vars, filters_size, old_bilinear_interpolatio
     return rotated_filter
 
 
-def list_shape(l):        
-    try:
-        print(len(l))
-        print(len(l[0]))
-        print(len(l[0][0]))
-        print(len(l[0][0][0]))
-        print(len(l[0][0][0][0]))
-        print(len(l[0][0][0][0][0]))
-        print(len(l[0][0][0][0][0][0]))
-        print(len(l[0][0][0][0][0][0][0]))
-        print(len(l[0][0][0][0][0][0][0][0]))
-        print(len(l[0][0][0][0][0][0][0][0][0]))
-        print(len(l[0][0][0][0][0][0][0][0][0][0]))
-    except (TypeError):
-        pass
+def shape(l, out="("):
+    re = True
+    if out == "(":
+        re = False
+    out += str(len(l)) + ", "
+    if isinstance(l[0], list):
+        out = list_shape(l[0], out)
+        if re == False:
+            if out[-1] == ",":
+                out = out[:-1]
+            print(out)
+    elif isinstance(l[0], torch.Tensor):
+        out += str(l[0].shape)[12:-2] + ")"
+        #print(str(l[0].shape)[12:-2])
+        if re == False:
+            if out[-1] == ",":
+                out = out[:-1]
+            print(out)
+    else:
+        out += ")"
+    return out
 
 
 if __name__ == '__main__':

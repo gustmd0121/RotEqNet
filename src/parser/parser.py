@@ -307,6 +307,7 @@ class Parser:
         self.img_size = (img_size[0], img_size[1])
 
 
+    #Doesnt work with current parser
     def load_numpy(self, file, i):
         if (not os.path.isfile(self.folder + file +"/" + file + "_masks.npz") or not os.path.isfile(self.folder + file +"/" + file + "_input.npz")):
             print("No numpy files.")

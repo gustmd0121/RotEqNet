@@ -171,7 +171,7 @@ if __name__ == '__main__':
             #if mode == 'train' and use_train_time_augmentation:
             #    img = random_rotation(img)
 
-            data.append(np.expand_dims(np.expand_dims(img, 0), 0))
+            data.append(np.expand_dims(img, 0))
             labels.append(tmp[1].squeeze())
         data = np.concatenate(data, 0)
         labels = np.array(labels, 'float32')
@@ -206,9 +206,12 @@ if __name__ == '__main__':
         print(imgs.shape)
         #imgs = np.split(imgs, imgs.shape[0],0)
         for i in range(len(imgs)):
-            imgs[i][0] = imgs[i][0] / 255 - 0.5
+            imgs[i][0] = imgs[i][0] / 255
 
+        np.swapaxes(imgs, 0, 1)
         mask_data = np.load(base_folder + train + "/" + train + "_masks.npz")['beetle']
+        # for i in range(len(mask_data)):
+        #     mask_data[i][1] = mask_data[i][1] / 360
         print(mask_data.shape)
         #mask_data = np.split(mask_data['beetle'], mask_data['beetle'].shape[0],0)
         # for i in range(len(mask_data)):
@@ -220,9 +223,11 @@ if __name__ == '__main__':
         imgs =  np.load(base_folder + test + "/" + test + "_input.npz")['data']
         #imgs = np.split(imgs, imgs.shape[0],0)
         for i in range(len(imgs)):
-            imgs[i][0] = imgs[i][0] / 255 - 0.5
+            imgs[i][0] = imgs[i][0] / 255
 
         mask_data = np.load(base_folder + test + "/" + test + "_masks.npz")['beetle']
+        # for i in range(len(mask_data)):
+        #     mask_data[i][1] = mask_data[i][1] / 360
         #mask_data = np.split(mask_data['beetle'], mask_data['beetle'].shape[0],0)
         # for i in range(len(mask_data)):
         #     mask_data[i] = np.squeeze(np.stack([mask_data[i], mask_data[i] * -1 + np.ones(mask_data[i].shape)], axis=0))
@@ -247,9 +252,12 @@ if __name__ == '__main__':
             optimizer.zero_grad()
 
             data, labels = getBatch(train_set_for_epoch, 'train')
-            out = net( data )
-            loss = criterion1( out[0],labels[0, 0, :, :] )
-            _, c = torch.max(out[0], 1)
+            out1, out2 = net( data )
+            loss1 = criterion1( out1.squeeze(1),labels[:, 0, :, :] )
+            loss2 = criterion2( out2.squeeze(1),labels[:, 1, :, :] )
+            loss = loss1 + loss2 / 129600 #360**2
+            # print(loss1, loss2/ 360)
+            #_, c = torch.max(out1, 1)
             loss.backward()
 
             optimizer.step()
@@ -295,10 +303,11 @@ if __name__ == '__main__':
     # image = image.unsqueeze(0)  # this is for VGG, may not be needed for ResNet
     image = image.cuda()
     xyz = net(image)
-    xyz = xyz.data.cpu().numpy()
+    xyz = xyz[0].data.cpu().numpy()
     xyz = np.squeeze(xyz)
-    xyz = Image.fromarray(xyz[0, :, :]*255)
-    orig = Image.fromarray((test_set[50][0]+0.5)*255)
+    xyz = Image.fromarray((xyz*255))
+    print(test_set[50][0].shape)
+    orig = Image.fromarray(test_set[50][0][0]*255)
     print(xyz.show(title='net'))
     # print(mask.show(title='mask'))
     print(orig.show(title='orig'))
