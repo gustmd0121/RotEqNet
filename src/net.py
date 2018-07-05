@@ -34,6 +34,7 @@ https://github.com/dmarcosg/RotEqNet
 
 epoch_size = 2
 batch_size = 3
+num_image = 50
 train_file = "Allogymnopleuri_#05"
 test_file = "Allogymnopleuri_#05"
 base_folder = "./data/"
@@ -204,7 +205,7 @@ if __name__ == '__main__':
     def load_data(train, test):
         # trainfiles
         imgs =  np.load(base_folder + train + "/" + train + "_input.npz")['data']
-        print(imgs.shape)
+        # print(imgs.shape)
         #imgs = np.split(imgs, imgs.shape[0],0)
         for i in range(len(imgs)):
             imgs[i] = imgs[i] / 255 -0.5
@@ -213,7 +214,7 @@ if __name__ == '__main__':
         mask_data = np.load(base_folder + train + "/" + train + "_masks.npz")['beetle']
         for i in range(len(mask_data)):
             mask_data[i][1] = mask_data[i][1] * math.pi / 180
-        print(mask_data.shape)
+        # print(mask_data.shape)
         #mask_data = np.split(mask_data['beetle'], mask_data['beetle'].shape[0],0)
         # for i in range(len(mask_data)):
         #     mask_data[i] = np.squeeze(np.stack([mask_data[i], mask_data[i] * -1 + np.ones(mask_data[i].shape)], axis=0))
@@ -294,24 +295,30 @@ if __name__ == '__main__':
     loader = transforms.Compose([transforms.ToTensor()])
     # image = Image.fromarray(test_set[50][0])
     # list_shape(test_set[50][0])
-    print(test_set[50][0][0].shape)
-    image = loader(np.expand_dims(test_set[50][0][0], 2)).float()
-    print(image.shape)
+    print(test_set[num_image][0][0].shape)
+    image = loader(np.expand_dims(test_set[num_image][0][0], 2)).float()
     # image.squeeze_()
     # image.unsqueeze_(0)
-    print(image.shape)
     #u = image[:,0,:,:]
     #u.unsqueeze_(0)
     #print(u.shape)
     # image = image.unsqueeze(0)  # this is for VGG, may not be needed for ResNet
     image = image.cuda()
     xyz = net(image)
-    xyz = xyz[0].data.cpu().numpy()
-    xyz = np.squeeze(xyz)
-    xyz = Image.fromarray((xyz*255))
-    orig = Image.fromarray((test_set[50][0][0]+0.5)*255)
-    print(xyz.show(title='net'))
-    # print(mask.show(title='mask'))
+    magnitude = xyz[0].data.cpu().numpy().squeeze(0).squeeze(0)
+    angles = xyz[1].data.cpu().numpy().squeeze(0).squeeze(0)
+    print("Angle:",str(get_average_angle(magnitude, angles, 0.15)*180/math.pi))
+    print("Real Angle:",np.max(test_set[num_image][1][1])*180/math.pi)
+    print("")
+    shape(angles)
+    print("Angle, x=138:", test_set[num_image][1][1][138]*180/math.pi)
+    print("Real Angle, x=138:", angles[138]*180/math.pi)
+    magnitude = np.squeeze(magnitude)
+    mag = Image.fromarray((magnitude*255))
+    print(mag.show(title='net'))
+    tresh = Image.fromarray(treshhold(magnitude, 0.15)*255)
+    print(tresh.show(title='tresh'))
+    orig = Image.fromarray((test_set[num_image][0][0]+0.5)*255)
     print(orig.show(title='orig'))
 
 

@@ -203,8 +203,8 @@ def shape(l, out="("):
     if out == "(":
         re = False
     out += str(len(l)) + ", "
-    if isinstance(l[0], list):
-        out = list_shape(l[0], out)
+    if isinstance(l[0], list) or isinstance(l[0], tuple) or isinstance(l[0], np.ndarray):
+        out = shape(l[0], out)
         if re == False:
             if out[-1] == ",":
                 out = out[:-1]
@@ -219,6 +219,28 @@ def shape(l, out="("):
     else:
         out += ")"
     return out
+
+
+def treshhold(mat,  treshhold=0.5):
+    for i in range(len(mat)):
+        for j in range(len(mat[0])):
+            if mat[i, j] <= treshhold:
+                mat[i, j] = 0
+    return mat
+
+
+def get_average_angle(magnitude, angle, treshhold=0.5):
+    out_angle = 0
+    num_angle = 0
+    for i in range(len(magnitude)):
+        for j in range(len(magnitude[0])):
+            if magnitude[i, j] > treshhold:
+                out_angle += angle[i, j]
+                num_angle += 1
+    if num_angle == 0:
+        return -1
+    print("Number of Pixel:", num_angle)
+    return out_angle / num_angle
 
 
 if __name__ == '__main__':
