@@ -8,7 +8,7 @@ from torch.autograd import Variable
 import random
 from torchvision import transforms
 import os
-
+import math
 # Local imports
 # Layers
 from framework import RotConv
@@ -32,7 +32,7 @@ https://arxiv.org/abs/1612.09346
 https://github.com/dmarcosg/RotEqNet
 """
 
-epoch_size = 1
+epoch_size = 2
 batch_size = 3
 train_file = "Allogymnopleuri_#05"
 test_file = "Allogymnopleuri_#05"
@@ -49,20 +49,20 @@ if __name__ == '__main__':
             super(Net, self).__init__()
 
             self.main = nn.Sequential(
-                RotConv(2, 8, [3, 3], 1, 3 // 2, n_angles=17, mode=1),
+                RotConv(1, 4, [3, 3], 1, 3 // 2, n_angles=17, mode=1),
                 OrientationPooling(),
-                #VectorBatchNorm(8),
+                VectorBatchNorm(4),
                 SpatialPooling(2),
 
-                RotConv(8, 12, [3, 3], 1, 3 // 2, n_angles=17, mode=2),
-                OrientationPooling(),
-                #VectorBatchNorm(12),
-                SpatialPooling(2),
-
-                RotConv(12, 8, [3, 3], 1, 3 // 2, n_angles=17, mode=2),
+                RotConv(4, 8, [3, 3], 1, 3 // 2, n_angles=17, mode=2),
                 OrientationPooling(),
                 VectorBatchNorm(8),
-                VectorUpsample(scale_factor=2),
+                SpatialPooling(2),
+
+                # RotConv(12, 8, [3, 3], 1, 3 // 2, n_angles=17, mode=2),
+                # OrientationPooling(),
+                # VectorBatchNorm(8),
+                # VectorUpsample(scale_factor=2),
 
                 RotConv(8, 4, [3, 3], 1, 3 // 2, n_angles=17, mode=2),
                 OrientationPooling(),
@@ -72,10 +72,11 @@ if __name__ == '__main__':
                 RotConv(4, 2, [3, 3], 1, 3 // 2, n_angles=17, mode=2),
                 OrientationPooling(),
                 VectorBatchNorm(2),
+                VectorUpsample(size=img_size),
 
                 RotConv(2, 1, [3, 3], 1, 3 // 2, n_angles=17, mode=2),
                 OrientationPooling(),
-                VectorUpsample(size=img_size),
+
 
                 VectorToMagnitude()
             )
@@ -94,7 +95,7 @@ if __name__ == '__main__':
 
     # Net Parameters
     criterion1 = nn.BCELoss()
-    criterion2 = nn.MSELoss()
+    criterion2 = nn.L1Loss()
     if type(gpu_no) == int:
         net.cuda(gpu_no)
 
@@ -206,12 +207,12 @@ if __name__ == '__main__':
         print(imgs.shape)
         #imgs = np.split(imgs, imgs.shape[0],0)
         for i in range(len(imgs)):
-            imgs[i][0] = imgs[i][0] / 255
+            imgs[i] = imgs[i] / 255 -0.5
 
         np.swapaxes(imgs, 0, 1)
         mask_data = np.load(base_folder + train + "/" + train + "_masks.npz")['beetle']
-        # for i in range(len(mask_data)):
-        #     mask_data[i][1] = mask_data[i][1] / 360
+        for i in range(len(mask_data)):
+            mask_data[i][1] = mask_data[i][1] * math.pi / 180
         print(mask_data.shape)
         #mask_data = np.split(mask_data['beetle'], mask_data['beetle'].shape[0],0)
         # for i in range(len(mask_data)):
@@ -223,11 +224,11 @@ if __name__ == '__main__':
         imgs =  np.load(base_folder + test + "/" + test + "_input.npz")['data']
         #imgs = np.split(imgs, imgs.shape[0],0)
         for i in range(len(imgs)):
-            imgs[i][0] = imgs[i][0] / 255
+            imgs[i] = imgs[i] / 255 -0.5
 
         mask_data = np.load(base_folder + test + "/" + test + "_masks.npz")['beetle']
-        # for i in range(len(mask_data)):
-        #     mask_data[i][1] = mask_data[i][1] / 360
+        for i in range(len(mask_data)):
+            mask_data[i][1] = mask_data[i][1] * math.pi / 180
         #mask_data = np.split(mask_data['beetle'], mask_data['beetle'].shape[0],0)
         # for i in range(len(mask_data)):
         #     mask_data[i] = np.squeeze(np.stack([mask_data[i], mask_data[i] * -1 + np.ones(mask_data[i].shape)], axis=0))
@@ -255,7 +256,7 @@ if __name__ == '__main__':
             out1, out2 = net( data )
             loss1 = criterion1( out1.squeeze(1),labels[:, 0, :, :] )
             loss2 = criterion2( out2.squeeze(1),labels[:, 1, :, :] )
-            loss = loss1 + loss2 / 129600 #360**2
+            loss = loss1 + loss2
             # print(loss1, loss2/ 360)
             #_, c = torch.max(out1, 1)
             loss.backward()
@@ -292,22 +293,23 @@ if __name__ == '__main__':
 
     loader = transforms.Compose([transforms.ToTensor()])
     # image = Image.fromarray(test_set[50][0])
-    list_shape(test_set[50][0])
-    image = loader(test_set[50][0]).float()
-    image.resize_((2, 300, 400))
-    image.unsqueeze_(0)
+    # list_shape(test_set[50][0])
+    print(test_set[50][0][0].shape)
+    image = loader(np.expand_dims(test_set[50][0][0], 2)).float()
+    print(image.shape)
+    # image.squeeze_()
+    # image.unsqueeze_(0)
+    print(image.shape)
     #u = image[:,0,:,:]
     #u.unsqueeze_(0)
     #print(u.shape)
-    # image = Variable(image, requires_grad=True)
     # image = image.unsqueeze(0)  # this is for VGG, may not be needed for ResNet
     image = image.cuda()
     xyz = net(image)
     xyz = xyz[0].data.cpu().numpy()
     xyz = np.squeeze(xyz)
     xyz = Image.fromarray((xyz*255))
-    print(test_set[50][0].shape)
-    orig = Image.fromarray(test_set[50][0][0]*255)
+    orig = Image.fromarray((test_set[50][0][0]+0.5)*255)
     print(xyz.show(title='net'))
     # print(mask.show(title='mask'))
     print(orig.show(title='orig'))

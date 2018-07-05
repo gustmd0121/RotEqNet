@@ -278,9 +278,9 @@ class Parser:
         print("Generating input numpy array ...")
 
         if(scale_factor != -1):
-            data = np.zeros([len(ball_props), 2, int(self.img_size[0]*scale_factor), int(self.img_size[1]*scale_factor)], dtype='float32')
+            data = np.zeros([len(ball_props), 1, int(self.img_size[0]*scale_factor), int(self.img_size[1]*scale_factor)], dtype='float32')
         else:
-            data = np.zeros([len(ball_props), 2, self.new_img_size[0], self.new_img_size[1]], dtype='float32')
+            data = np.zeros([len(ball_props), 1, self.new_img_size[0], self.new_img_size[1]], dtype='float32')
         for i in range(0, len(ball_props)):
             img_name = ball_props[i][5]
             if(img_name != beetle_props[i][5]):
@@ -293,10 +293,10 @@ class Parser:
                 scaled_img = scaled_img[self.offset[i][1]:self.offset[i][1]+self.new_img_size[0], self.offset[i][0]:self.offset[i][0]+self.new_img_size[1]]
             data[i, 0, :, :] = scaled_img
 
-            if(scale_factor != -1):
-                data[i, 1, :, :] = np.zeros([int(self.img_size[0]*scale_factor), int(self.img_size[1]*scale_factor)], dtype='float32')
-            else:
-                data[i, 1, :, :] = np.zeros([self.new_img_size[0], self.new_img_size[1]], dtype='float32')
+            # if(scale_factor != -1):
+            #     data[i, 1, :, :] = np.zeros([int(self.img_size[0]*scale_factor), int(self.img_size[1]*scale_factor)], dtype='float32')
+            # else:
+            #     data[i, 1, :, :] = np.zeros([self.new_img_size[0], self.new_img_size[1]], dtype='float32')
 
         print("Compressing and saving input numpy array ...")
         np.savez_compressed(self.folder + file +"/" + file + "_input", data=data)

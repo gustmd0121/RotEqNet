@@ -74,27 +74,17 @@ class RotConv(nn.Module):
     def forward(self, input):
         outputs = []
         if self.mode == 1:
-            u = input[:, 0, :, :]
-            u.unsqueeze_(1)
-            v = input[:, 1, :, :]
-            v.unsqueeze_(1)
+            input.unsqueeze_(1)
+            outputs = []
+
             # Loop through the different filter-transformations
             for ind, interp_vars in enumerate(self.interp_vars):
-                angle = self.angle_tensors[ind]
                 # Apply rotation
-                wu = apply_transform(self.weight1, interp_vars, self.kernel_size)
-                wv = apply_transform(self.weight2, interp_vars, self.kernel_size)
+                weight = apply_transform(self.weight1, interp_vars, self.kernel_size)
 
-                # Do convolution for u
-                wru = torch.cos(angle) * wu - torch.sin(angle) * wv
-                u_out = F.conv2d(u, wru, None, self.stride, self.padding, self.dilation)
-
-                # Do convolution for v
-                wrv = torch.sin(angle) * wu + torch.cos(angle) * wv
-                v_out = F.conv2d(v, wrv, None, self.stride, self.padding, self.dilation)
-
-                # Compute magnitude (p)
-                outputs.append((u_out + v_out).unsqueeze(-1))
+                # Do convolution
+                out = F.conv2d(input, weight, None, self.stride, self.padding, self.dilation)
+                outputs.append(out.unsqueeze(-1))
 
         elif self.mode == 2:
             u = input[0]
