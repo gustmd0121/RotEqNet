@@ -34,7 +34,7 @@ https://arxiv.org/abs/1612.09346
 https://github.com/dmarcosg/RotEqNet
 """
 
-epoch_size = 1
+epoch_size = 2
 batch_size = 3
 num_image = 50
 train_file = "Allogymnopleuri_#05"
@@ -327,7 +327,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Set limits and number of points in grid
-y, x = np.mgrid[10:len(magnitude):100, 0:len(magnitude[0]):100]
+y, x = np.mgrid[0:len(magnitude[0]):100, 0:len(magnitude[0]):100]
 
 x_obstacle, y_obstacle = 0.0, 0.0
 alpha_obstacle, a_obstacle, b_obstacle = 1.0, 1e3, 2e3
@@ -342,26 +342,37 @@ p = -alpha_obstacle * np.exp(-((x - x_obstacle)**2 / a_obstacle
 skip = (slice(None, None, 5), slice(None, None, 5))
 
 fig, ax = plt.subplots()
-im = ax.imshow(magnitude, extent=[x.min(), x.max(), y.min(), y.max()])
+im = ax.imshow(magnitude)
 
 def pol2cart(magnitude_map, angle_map):
     u = magnitude_map * np.cos(angle_map)
     v = magnitude_map * np.sin(angle_map)
-    return (u,v)
+    return u, v
 
 def xy_coords():
-    x = np.zeros(img_size)
-    y = np.zeros(img_size)
-    for i in range(img_size[0]):
-        x[i] = np.array(list(range(0, img_size[1] + 1)))
-    for i in range(len(img_size[1])):
-        y[:][i] = np.array(list(range(0, img_size[0] + 1)))
-    print(x,y)
+    x_single_col = np.array(list(range(0, img_size[1])))
+    y_single_row = np.array(list(range(0, img_size[0])))
+
+    x = np.tile(x_single_col, (img_size[0], 1))
+    y = np.tile(y_single_row, (img_size[1], 1))
+    y = y.transpose()
+
+    return x, y
 
 print(xy_coords)
 
-ax.quiver(x[skip], y[skip], angles= angles, color = 'w')
+#ax.quiver(x[skip], y[skip], angles= angles, color = 'w')
 
+(u, v) = pol2cart(magnitude, angles)
+(x, y) = xy_coords()
+
+
+u = u*100
+v = v*100
+
+print(np.max(angles))
+
+ax.quiver(x, y, u, v, color='w')
 fig.colorbar(im)
 ax.set(aspect=1, title='Quiver Plot')
 plt.show()

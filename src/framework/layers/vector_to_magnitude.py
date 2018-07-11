@@ -22,4 +22,9 @@ class VectorToMagnitude(nn.Module):
         # angle = math.pi - math.pi * sign_v + sign_v * torch.acos(u/(p + 1e-8))
         # print(angle)
 
+        # some test
+        # p = torch.sqrt(v ** 2 + u ** 2)
+        #
+        # p = torch.sign(u + v) * p
+
         return u+v , angle
