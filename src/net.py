@@ -9,6 +9,8 @@ import random
 from torchvision import transforms
 import os
 import math
+from math import hypot
+import matplotlib.pyplot as plt
 # Local imports
 # Layers
 from framework import RotConv
@@ -32,7 +34,7 @@ https://arxiv.org/abs/1612.09346
 https://github.com/dmarcosg/RotEqNet
 """
 
-epoch_size = 2
+epoch_size = 1
 batch_size = 3
 num_image = 50
 train_file = "Allogymnopleuri_#05"
@@ -321,7 +323,48 @@ if __name__ == '__main__':
     orig = Image.fromarray((test_set[num_image][0][0]+0.5)*255)
     print(orig.show(title='orig'))
 
+import numpy as np
+import matplotlib.pyplot as plt
 
+# Set limits and number of points in grid
+y, x = np.mgrid[10:len(magnitude):100, 0:len(magnitude[0]):100]
+
+x_obstacle, y_obstacle = 0.0, 0.0
+alpha_obstacle, a_obstacle, b_obstacle = 1.0, 1e3, 2e3
+
+p = -alpha_obstacle * np.exp(-((x - x_obstacle)**2 / a_obstacle
+                               + (y - y_obstacle)**2 / b_obstacle))
+
+# For the absolute values of "dx" and "dy" to mean anything, we'll need to
+# specify the "cellsize" of our grid.  For purely visual purposes, though,
+# we could get away with just "dy, dx = np.gradient(p)".
+
+skip = (slice(None, None, 5), slice(None, None, 5))
+
+fig, ax = plt.subplots()
+im = ax.imshow(magnitude, extent=[x.min(), x.max(), y.min(), y.max()])
+
+def pol2cart(magnitude_map, angle_map):
+    u = magnitude_map * np.cos(angle_map)
+    v = magnitude_map * np.sin(angle_map)
+    return (u,v)
+
+def xy_coords():
+    x = np.zeros(img_size)
+    y = np.zeros(img_size)
+    for i in range(img_size[0]):
+        x[i] = np.array(list(range(0, img_size[1] + 1)))
+    for i in range(len(img_size[1])):
+        y[:][i] = np.array(list(range(0, img_size[0] + 1)))
+    print(x,y)
+
+print(xy_coords)
+
+ax.quiver(x[skip], y[skip], angles= angles, color = 'w')
+
+fig.colorbar(im)
+ax.set(aspect=1, title='Quiver Plot')
+plt.show()
 
 # not used ("mnist.py" file)
 # def linear_interpolation_2D(input_array, indices, outside_val=0, boundary_correction=True):

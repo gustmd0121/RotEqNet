@@ -5,6 +5,7 @@ import cv2
 from scipy import misc
 from PIL import Image
 from ast import literal_eval
+import math
 from random import randint
 
 class Parser:
@@ -249,6 +250,8 @@ class Parser:
                         mask[i][0][y][x] = 1
                         if hasdir:
                             mask[i][1][y][x] = dir
+                        else:
+                            mask[i][1][y][x] = math.nan
                     except (IndexError):
                         pass
         return mask
