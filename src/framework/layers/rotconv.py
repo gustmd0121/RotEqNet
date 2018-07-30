@@ -4,6 +4,7 @@ import torch.nn as nn
 from torch.nn import functional as F
 from torch.nn.parameter import Parameter
 import math
+from pprint import pprint
 
 # Local imports
 from ..utils import *
@@ -97,6 +98,12 @@ class RotConv(nn.Module):
                 wv = apply_transform(self.weight2, interp_vars, self.kernel_size)
 
                 # Do convolution for u
+                from pprint import pprint
+                #pprint(wu.shape)
+                #pprint(angle)
+                #pprint(torch.cos(angle))
+                #pprint(torch.cos(angle))
+                #pprint(angle)
                 wru = torch.cos(angle) * wu - torch.sin(angle) * wv
                 u_out = F.conv2d(u, wru, None, self.stride, self.padding, self.dilation)
 

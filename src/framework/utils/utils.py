@@ -229,7 +229,7 @@ def treshhold(mat,  treshhold=0.5):
     return mat
 
 
-def get_average_angle(magnitude, angle, treshhold=0.5):
+def get_average_angle(magnitude, angle, treshhold=0.65):
     out_angle = 0
     num_angle = 0
     for i in range(len(magnitude)):

@@ -36,7 +36,7 @@ https://github.com/dmarcosg/RotEqNet
 
 epoch_size = 2
 batch_size = 3
-num_image = 50
+num_image = 70
 train_file = "Allogymnopleuri_#05"
 test_file = "Allogymnopleuri_#05"
 base_folder = "./data/"
@@ -77,7 +77,7 @@ if __name__ == '__main__':
                 VectorBatchNorm(2),
                 VectorUpsample(size=img_size),
 
-                RotConv(2, 1, [3, 3], 1, 3 // 2, n_angles=17, mode=2),
+                RotConv(2, 1, [3, 3], 1, 3 // 2, n_angles=180, mode=2),
                 OrientationPooling(),
 
 
@@ -370,7 +370,7 @@ print(xy_coords)
 u = u*100
 v = v*100
 
-print(np.max(angles))
+#print(np.max(angles))
 
 ax.quiver(x, y, u, v, color='w')
 fig.colorbar(im)

@@ -93,7 +93,7 @@ class Parser:
                                         else:
                                             json_has_direction =  False
                                     if(prop['Property']['ID'] == 'Direction'):
-                                        json_direction = int(float(prop['Property']['Value']))
+                                        json_direction = ((360-int(float(prop['Property']['Value'])))+90) % 360
                                     if(prop['Property']['ID'] == 'Size'):
                                         json_width = int(float(prop['Property']['Value'].split(";")[0]))
                                         json_height = int(float(prop['Property']['Value'].split(";")[1]))
