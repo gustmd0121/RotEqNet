@@ -12,6 +12,7 @@ class Parser:
     def __init__(self, folder):
         self.folder = folder
         self.img_size = (1080, 1920)
+        self.n_angles = 17
         self.new_img_size = self.img_size
         self.offset = []
 
@@ -210,16 +211,29 @@ class Parser:
         with open(ball_props_file) as f:
             ball_props = [literal_eval(line) for line in f.readlines()]
 
-        if(scale_factor != -1):
-            beetle_masks = self.__create_scaled_mask(beetle_props, scale_factor)
-            ball_masks = self.__create_scaled_mask(ball_props, scale_factor)
-        else:
-            beetle_masks = self.__create_cropped_mask(beetle_props)
-            ball_masks = self.__create_cropped_mask(ball_props)
+        # if(scale_factor != -1):
+        #     beetle_masks = self.__create_scaled_mask(beetle_props, scale_factor)
+        #     ball_masks = self.__create_scaled_mask(ball_props, scale_factor)
+        # else:
+        #     beetle_masks = self.__create_cropped_mask(beetle_props)
+        #     ball_masks = self.__create_cropped_mask(ball_props)
+
+        angle_vec = self.__create_angle_vec(beetle_props)
 
         print("Compressing and saving ground truth numpy array ...")
-        np.savez_compressed(self.folder + file +"/" + file + "_masks", beetle=beetle_masks, ball=ball_masks)
+        np.savez_compressed(self.folder + file +"/" + file + "_masks", angle=angle_vec) # beetle=beetle_masks, ball=ball_masks)
 
+
+    def __create_angle_vec(self, props):
+        vec = np.zeros([len(props), self.n_angles] ,dtype='float32')
+        for prop in range(0, len(props)):
+            index, pos, size, hasdir, dir, file = props[prop]
+            pos_x, pos_y = pos
+            size_w, size_h = size
+            for i in range(0, self.n_angles):
+                if abs(i * (360/(self.n_angles-1)) - dir) <= (360/((self.n_angles-1)*2)):
+                    vec[prop, i] = 1
+        return vec
 
 
     def __create_scaled_mask(self, props, scale_factor):
