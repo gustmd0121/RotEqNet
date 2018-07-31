@@ -20,7 +20,7 @@ class VectorToMagnitude(nn.Module):
 
         # new
 
-        p = torch.sqrt(v ** 2 + u ** 2)
+        # p = torch.sqrt(v ** 2 + u ** 2)
         # p = torch.sign(torch.sign(u) + torch.sign(v) + 0.1) * p
 
 
@@ -65,4 +65,4 @@ class VectorToMagnitude(nn.Module):
         #
         # p = torch.sign(u + v) * p
 
-        return p, angle
+        return angle
