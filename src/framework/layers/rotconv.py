@@ -114,5 +114,14 @@ class RotConv(nn.Module):
                 # Compute magnitude (p)
                 outputs.append((u_out + v_out).unsqueeze(-1))
 
+
+        # Get the maximum direction (Orientation Pooling)
+        strength, max_ind = torch.max(torch.cat(outputs, -1), -1)
+
+        # Convert from polar representation q
+        angle_map = max_ind.float() * (360. / len(self.angles) / 180. * np.pi)
+        u = F.relu(strength) * torch.cos(angle_map)
+        v = F.relu(strength) * torch.sin(angle_map)
+
         # print("rotconv:", len(outputs), len(outputs[0]), len(outputs[0][0]), len(outputs[0][0][0]), len(outputs[0][0][0][0]))
-        return outputs, self.angles
+        return u,v

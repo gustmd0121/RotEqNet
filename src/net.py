@@ -39,11 +39,11 @@ https://arxiv.org/abs/1612.09346
 https://github.com/dmarcosg/RotEqNet
 """
 
-epoch_size = 2
-batch_size = 3
+epoch_size = 100
+batch_size = 5
 num_image = 50
-train_file = "Allogymnopleuri_#05"
-test_file = "Allogymnopleuri_#05"
+train_file = "Allogymnopleuri_#09"
+test_file = "Allogymnopleuri_#09"
 base_folder = "./data/"
 if not os.path.isdir(base_folder):
     base_folder = "." + base_folder
@@ -59,21 +59,22 @@ if __name__ == '__main__':
             self.main = nn.Sequential(
                 # Shape 256, 256
                 RotConv(1, 4, [9, 9], 1, 9 // 2, n_angles=17, mode=1),
-                OrientationPooling(),
+                SpatialPooling(2),
                 VectorBatchNorm(4),
-                # SpatialPooling(2),
 
-                # Shape 256, 256
+                # Shape 128, 128
                 RotConv(4, 8, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
-                OrientationPooling(),
+                SpatialPooling(4),
                 VectorBatchNorm(8),
-                SpatialPooling(4),
 
-                # Shape 64, 64
+                # Shape 32, 32
                 RotConv(8, 16, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
-                OrientationPooling(),
+                SpatialPooling(2),
                 VectorBatchNorm(16),
-                SpatialPooling(4),
+
+                # Shape 16, 16
+                RotConv(16, 32, [16, 16], 1, 0, n_angles=17, mode=2),
+                # Shape 1, 1
 
                 # RotConv(12, 8, [3, 3], 1, 3 // 2, n_angles=17, mode=2),
                 # OrientationPooling(),
@@ -85,17 +86,35 @@ if __name__ == '__main__':
                 # VectorBatchNorm(4),
                 # VectorUpsample(scale_factor=2),
 
-                # Shape 16, 16
-                RotConv(16, 1, [16, 16], 1, 0, n_angles=17, mode=2),
-
                 VectorToMagnitude(),
 
-                # nn.Conv2d(32, 128, 1),
+                nn.Conv2d(32, 128, 1),
+                nn.BatchNorm2d(128),
+                nn.ReLU(),
+                nn.Dropout2d(0.7),
+
+                nn.Conv2d(128, 17, 1),
+
+
+                # #28x28
+                # RotConv(1, 6, [9, 9], 1, 9 // 2, n_angles=17, mode=1),
+                # VectorMaxPool(2),
+                # VectorBatchNorm(6),
+                #
+                # #14x14
+                # RotConv(6, 16, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
+                # VectorMaxPool(2),
+                # VectorBatchNorm(16),
+                #
+                # #1x1
+                # RotConv(16, 32, [9, 9], 1, 1, n_angles=17, mode=2),
+                # Vector2Magnitude(),
+                #
+                # nn.Conv2d(32, 128, 1),  # FC1
                 # nn.BatchNorm2d(128),
                 # nn.ReLU(),
                 # nn.Dropout2d(0.7),
-                #
-                # nn.Conv2d(128, 17, 1),
+                # nn.Conv2d(128, 10, 1), # FC2
 
 
                 #Flatten(),
@@ -116,8 +135,8 @@ if __name__ == '__main__':
 
         def forward(self, x):
             x = self.main(x)
+            x = x.view(x.size()[0], x.size()[1])
             x = F.softmax(x)
-            # x = x.view(x.size()[0], x.size()[1])
             # y = F.sigmoid(x[0])
             # z = F.relu(x[1])
             #print("x.shape: " +str(x.shape))
@@ -224,15 +243,15 @@ if __name__ == '__main__':
 
     def adjust_learning_rate(optimizer, epoch):
         """Gradually decay learning rate"""
-        if epoch == 20:
+        if epoch == 5:
             lr = start_lr / 10
             for param_group in optimizer.param_groups:
                 param_group['lr'] = lr
-        if epoch == 40:
+        if epoch == 10:
             lr = start_lr / 100
             for param_group in optimizer.param_groups:
                 param_group['lr'] = lr
-        if epoch == 60:
+        if epoch == 20:
             lr = start_lr / 100
             for param_group in optimizer.param_groups:
                 param_group['lr'] = lr

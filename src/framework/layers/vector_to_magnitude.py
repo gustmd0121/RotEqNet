@@ -12,15 +12,21 @@ class VectorToMagnitude(nn.Module):
         super(VectorToMagnitude, self).__init__()
 
     def forward(self, input):
-        ps = torch.cat(input[0], -1).squeeze()
-        angle_tensors = list()
-        for angle in input[1]:
-            angle_tensors.append(Variable(torch.FloatTensor(np.array([angle / 180. * np.pi]))))
-        angles = torch.cat(angle_tensors, -1).squeeze()
-        angles = angles.cuda()
-        u = F.relu(ps) * torch.cos(angles)
-        v = F.relu(ps) * torch.sin(angles)
-        ps = torch.sqrt(u ** 2 + v ** 2)
+
+        u = input[0]
+        v = input[1]
+
+        p = torch.sqrt(v ** 2 + u ** 2)
+        return p
+        # ps = torch.cat(input[0], -1).squeeze()
+        # angle_tensors = list()
+        # for angle in input[1]:
+        #     angle_tensors.append(Variable(torch.FloatTensor(np.array([angle / 180. * np.pi]))))
+        # angles = torch.cat(angle_tensors, -1).squeeze()
+        # angles = angles.cuda()
+        # u = F.relu(ps) * torch.cos(angles)
+        # v = F.relu(ps) * torch.sin(angles)
+        # ps = torch.sqrt(u ** 2 + v ** 2)
         # for i in range(len(input[0])):
         #     angle_map = i * (360. / len(input[1]) / 180. * math.pi)
         #     u = ps * torch.cos(angle_map)
