@@ -41,7 +41,7 @@ https://github.com/dmarcosg/RotEqNet
 
 epoch_size = 2
 batch_size = 3
-num_image = 70
+num_image = 50
 train_file = "Allogymnopleuri_#05"
 test_file = "Allogymnopleuri_#05"
 base_folder = "./data/"
@@ -57,20 +57,23 @@ if __name__ == '__main__':
             super(Net, self).__init__()
 
             self.main = nn.Sequential(
-                RotConv(1, 4, [3, 3], 1, 3 // 2, n_angles=17, mode=1),
+                # Shape 256, 256
+                RotConv(1, 4, [9, 9], 1, 9 // 2, n_angles=17, mode=1),
                 OrientationPooling(),
                 VectorBatchNorm(4),
                 # SpatialPooling(2),
 
-                RotConv(4, 8, [3, 3], 1, 3 // 2, n_angles=17, mode=2),
+                # Shape 256, 256
+                RotConv(4, 8, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
                 OrientationPooling(),
                 VectorBatchNorm(8),
-                # SpatialPooling(2),
+                SpatialPooling(4),
 
-                RotConv(8, 16, [3, 3], 1, 3 // 2, n_angles=17, mode=2),
+                # Shape 64, 64
+                RotConv(8, 16, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
                 OrientationPooling(),
                 VectorBatchNorm(16),
-                SpatialPooling(2),
+                SpatialPooling(4),
 
                 # RotConv(12, 8, [3, 3], 1, 3 // 2, n_angles=17, mode=2),
                 # OrientationPooling(),
@@ -82,12 +85,24 @@ if __name__ == '__main__':
                 # VectorBatchNorm(4),
                 # VectorUpsample(scale_factor=2),
 
-                RotConv(16, 1, [3, 3], 1, 3 // 2, n_angles=17, mode=2),
-                OrientationPooling(),
+                # Shape 16, 16
+                RotConv(16, 1, [16, 16], 1, 0, n_angles=17, mode=2),
+
                 VectorToMagnitude(),
-                Flatten(),
-                nn.Linear(90000, 34),
-                nn.Linear(34, 17)
+
+                # nn.Conv2d(32, 128, 1),
+                # nn.BatchNorm2d(128),
+                # nn.ReLU(),
+                # nn.Dropout2d(0.7),
+                #
+                # nn.Conv2d(128, 17, 1),
+
+
+                #Flatten(),
+                #nn.Linear(90000, 34),
+                #nn.Linear(34, 17)
+
+
                 # OrientationPooling(),
                 # VectorBatchNorm(2),
                 # VectorUpsample(size=img_size),
@@ -102,8 +117,11 @@ if __name__ == '__main__':
         def forward(self, x):
             x = self.main(x)
             x = F.softmax(x)
+            # x = x.view(x.size()[0], x.size()[1])
             # y = F.sigmoid(x[0])
             # z = F.relu(x[1])
+            #print("x.shape: " +str(x.shape))
+
             return x
 
 
@@ -113,7 +131,7 @@ if __name__ == '__main__':
     net = Net()
 
     # Net Parameters
-    criterion1 = Cross_entropy_one_hot
+    criterion1 = nn.CrossEntropyLoss()
     criterion2 = nn.L1Loss()
     if type(gpu_no) == int:
         net.cuda(gpu_no)
@@ -197,7 +215,7 @@ if __name__ == '__main__':
         labels = np.array(labels, 'float32')
 
         data = Variable(torch.from_numpy(data))
-        labels = Variable(torch.from_numpy(labels))
+        labels = Variable(torch.from_numpy(labels).long())
 
         if type(gpu_no) == int:
             data = data.cuda(gpu_no)
@@ -230,8 +248,9 @@ if __name__ == '__main__':
 
         np.swapaxes(imgs, 0, 1)
         mask_data = np.load(base_folder + train + "/" + train + "_masks.npz")['angle']
-        for i in range(len(mask_data)):
-            mask_data[i][1] = mask_data[i][1] * math.pi / 180
+        # for i in range(len(mask_data)):
+        #     print(mask_data.shape)
+        #     mask_data[i][1] = mask_data[i][1] * math.pi / 180
         # print(mask_data.shape)
         #mask_data = np.split(mask_data['beetle'], mask_data['beetle'].shape[0],0)
         # for i in range(len(mask_data)):
@@ -246,8 +265,8 @@ if __name__ == '__main__':
             imgs[i] = imgs[i] / 255 -0.5
 
         mask_data = np.load(base_folder + test + "/" + test + "_masks.npz")['angle']
-        for i in range(len(mask_data)):
-            mask_data[i][1] = mask_data[i][1] * math.pi / 180
+        # for i in range(len(mask_data)):
+        #     mask_data[i][1] = mask_data[i][1] * math.pi / 180
         #mask_data = np.split(mask_data['beetle'], mask_data['beetle'].shape[0],0)
         # for i in range(len(mask_data)):
         #     mask_data[i] = np.squeeze(np.stack([mask_data[i], mask_data[i] * -1 + np.ones(mask_data[i].shape)], axis=0))
@@ -272,11 +291,12 @@ if __name__ == '__main__':
             optimizer.zero_grad()
 
             data, labels = getBatch(train_set_for_epoch, 'train')
+            #print("data.shape:" + str(data.shape))
             out1 = net( data )
-            print(out1.shape)
-            print(out1)
-            print(labels)
-            print(labels[0].shape)
+            #print("out.shape:" + str(out1.shape))
+            #print(out1)
+            #print(labels)
+            #print(labels[0].shape)
             loss1 = criterion1( out1,labels )
             # loss2 = criterion2( out2.squeeze(1),labels[:, 1, :, :] )
             # loss = loss1 + loss2
@@ -318,84 +338,123 @@ if __name__ == '__main__':
     # image = Image.fromarray(test_set[50][0])
     # list_shape(test_set[50][0])
     print(test_set[num_image][0][0].shape)
-    image = loader(np.expand_dims(test_set[num_image][0][0], 2)).float()
+
+    eval_mat = np.zeros((17, 17))
+
+    for i in range(0, len(test_set)):
+        image = loader(np.expand_dims(test_set[i][0][0], 2)).float()
     # image.squeeze_()
     # image.unsqueeze_(0)
     #u = image[:,0,:,:]
     #u.unsqueeze_(0)
     #print(u.shape)
     # image = image.unsqueeze(0)  # this is for VGG, may not be needed for ResNet
-    image = image.cuda()
-    xyz = net(image)
-    magnitude = xyz[0].data.cpu().numpy().squeeze(0).squeeze(0)
-    angles = xyz[1].data.cpu().numpy().squeeze(0).squeeze(0)
-    print("Angle:",str(get_average_angle(magnitude, angles, 0.15)*180/math.pi))
-    print("Real Angle:",np.max(test_set[num_image][1][1])*180/math.pi)
-    print("")
-    shape(angles)
-    print("Angle, x=138:", test_set[num_image][1][1][138]*180/math.pi)
-    print("Real Angle, x=138:", angles[138]*180/math.pi)
-    magnitude = np.squeeze(magnitude)
-    mag = Image.fromarray((magnitude*255))
-    print(mag.show(title='net'))
-    tresh = Image.fromarray(treshhold(magnitude, 0.15)*255)
-    print(tresh.show(title='tresh'))
-    orig = Image.fromarray((test_set[num_image][0][0]+0.5)*255)
-    print(orig.show(title='orig'))
+        image = image.cuda()
+        xyz = net(image)
 
-import numpy as np
-import matplotlib.pyplot as plt
+        predicted_angle = np.argmax(xyz.cpu().detach().numpy())
+        real_angle = int(test_set[i][1])
+        eval_mat[real_angle][predicted_angle] += 1
 
-# Set limits and number of points in grid
-y, x = np.mgrid[0:len(magnitude[0]):100, 0:len(magnitude[0]):100]
+    #magnitude = xyz[0].data.cpu().numpy().squeeze(0).squeeze(0)
+    #angles = xyz[1].data.cpu().numpy().squeeze(0).squeeze(0)
+    #print("Angle:",str(get_average_angle(magnitude, angles, 0.15)*180/math.pi))
+    #print("Real Angle:",np.max(test_set[num_image][1][1])*180/math.pi)
 
-x_obstacle, y_obstacle = 0.0, 0.0
-alpha_obstacle, a_obstacle, b_obstacle = 1.0, 1e3, 2e3
+    print(eval_mat)
+    #print("")
+    #shape(angles)
+    #print("Angle, x=138:", test_set[num_image][1][1][138]*180/math.pi)
+    #print("Real Angle, x=138:", angles[138]*180/math.pi)
+    #magnitude = np.squeeze(magnitude)
+    #mag = Image.fromarray((magnitude*255))
+    # print(mag.show(title='net'))
+    # tresh = Image.fromarray(treshhold(magnitude, 0.15)*255)
+    # print(tresh.show(title='tresh'))
+    # orig = Image.fromarray((test_set[num_image][0][0]+0.5)*255)
+    # print(orig.show(title='orig'))
 
-p = -alpha_obstacle * np.exp(-((x - x_obstacle)**2 / a_obstacle
-                               + (y - y_obstacle)**2 / b_obstacle))
+# import numpy as np
+# import matplotlib.pyplot as plt
+#
+# # Set limits and number of points in grid
+# y, x = np.mgrid[0:len(magnitude[0]):100, 0:len(magnitude[0]):100]
+#
+# x_obstacle, y_obstacle = 0.0, 0.0
+# alpha_obstacle, a_obstacle, b_obstacle = 1.0, 1e3, 2e3
+#
+# p = -alpha_obstacle * np.exp(-((x - x_obstacle)**2 / a_obstacle
+#                                + (y - y_obstacle)**2 / b_obstacle))
+#
+# # For the absolute values of "dx" and "dy" to mean anything, we'll need to
+# # specify the "cellsize" of our grid.  For purely visual purposes, though,
+# # we could get away with just "dy, dx = np.gradient(p)".
+#
+# skip = (slice(None, None, 5), slice(None, None, 5))
+#
+# fig, ax = plt.subplots()
+# im = ax.imshow(magnitude)
+#
+# def pol2cart(magnitude_map, angle_map):
+#     u = magnitude_map * np.cos(angle_map)
+#     v = magnitude_map * np.sin(angle_map)
+#     return u, v
+#
+# def xy_coords():
+#     x_single_col = np.array(list(range(0, img_size[1])))
+#     y_single_row = np.array(list(range(0, img_size[0])))
+#
+#     x = np.tile(x_single_col, (img_size[0], 1))
+#     y = np.tile(y_single_row, (img_size[1], 1))
+#     y = y.transpose()
+#
+#     return x, y
+#
+# print(xy_coords)
+#
+# #ax.quiver(x[skip], y[skip], angles= angles, color = 'w')
+#
+# (u, v) = pol2cart(magnitude, angles)
+# (x, y) = xy_coords()
+#
+#
+# u = u*100
+# v = v*100
+#
+# ax.quiver(x, y, u, v, color='w')
+# fig.colorbar(im)
+# ax.set(aspect=1, title='Quiver Plot')
+# plt.show()
 
-# For the absolute values of "dx" and "dy" to mean anything, we'll need to
-# specify the "cellsize" of our grid.  For purely visual purposes, though,
-# we could get away with just "dy, dx = np.gradient(p)".
-
-skip = (slice(None, None, 5), slice(None, None, 5))
-
-fig, ax = plt.subplots()
-im = ax.imshow(magnitude)
-
-def pol2cart(magnitude_map, angle_map):
-    u = magnitude_map * np.cos(angle_map)
-    v = magnitude_map * np.sin(angle_map)
-    return u, v
-
-def xy_coords():
-    x_single_col = np.array(list(range(0, img_size[1])))
-    y_single_row = np.array(list(range(0, img_size[0])))
-
-    x = np.tile(x_single_col, (img_size[0], 1))
-    y = np.tile(y_single_row, (img_size[1], 1))
-    y = y.transpose()
-
-    return x, y
-
-print(xy_coords)
-
-#ax.quiver(x[skip], y[skip], angles= angles, color = 'w')
-
-(u, v) = pol2cart(magnitude, angles)
-(x, y) = xy_coords()
 
 
-u = u*100
-v = v*100
 
-#print(np.max(angles))
 
-ax.quiver(x, y, u, v, color='w')
-fig.colorbar(im)
-ax.set(aspect=1, title='Quiver Plot')
-plt.show()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # not used ("mnist.py" file)
 # def linear_interpolation_2D(input_array, indices, outside_val=0, boundary_correction=True):

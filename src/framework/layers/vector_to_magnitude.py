@@ -1,6 +1,8 @@
 # Global imports
 import torch
 import torch.nn as nn
+from torch.nn import functional as F
+from torch.autograd import Variable
 import math
 from pprint import pprint
 import numpy as np
@@ -10,11 +12,26 @@ class VectorToMagnitude(nn.Module):
         super(VectorToMagnitude, self).__init__()
 
     def forward(self, input):
-        u = input[0]
-        v = input[1]
+        ps = torch.cat(input[0], -1).squeeze()
+        angle_tensors = list()
+        for angle in input[1]:
+            angle_tensors.append(Variable(torch.FloatTensor(np.array([angle / 180. * np.pi]))))
+        angles = torch.cat(angle_tensors, -1).squeeze()
+        angles = angles.cuda()
+        u = F.relu(ps) * torch.cos(angles)
+        v = F.relu(ps) * torch.sin(angles)
+        ps = torch.sqrt(u ** 2 + v ** 2)
+        # for i in range(len(input[0])):
+        #     angle_map = i * (360. / len(input[1]) / 180. * math.pi)
+        #     u = ps * torch.cos(angle_map)
+        #     v = ps * torch.sin(angle_map)
+        # ps = torch.sqrt(ps[0] ** 2 + ps[1] ** 2)
+        # print(ps.shape)
+        # u = input[0]
+        # v = input[1]
 
         #angle = torch.atan(torch.abs(u / (v + 1e-8)))
-        angle = torch.atan2(u, v) + math.pi
+        # angle = torch.atan2(u, v) + math.pi
         #pprint(torch.max(angle))
 
 
@@ -65,4 +82,4 @@ class VectorToMagnitude(nn.Module):
         #
         # p = torch.sign(u + v) * p
 
-        return angle
+        return ps
