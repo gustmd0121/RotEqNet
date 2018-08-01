@@ -225,14 +225,14 @@ class Parser:
 
 
     def __create_angle_vec(self, props):
-        vec = np.zeros([len(props), self.n_angles] ,dtype='float32')
+        vec = np.zeros([len(props)] ,dtype='float32')
         for prop in range(0, len(props)):
             index, pos, size, hasdir, dir, file = props[prop]
             pos_x, pos_y = pos
             size_w, size_h = size
             for i in range(0, self.n_angles):
                 if abs(i * (360/(self.n_angles-1)) - dir) <= (360/((self.n_angles-1)*2)):
-                    vec[prop, i] = 1
+                    vec[prop] = i
         return vec
 
 
