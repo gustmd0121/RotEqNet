@@ -66,4 +66,4 @@ class VectorToMagnitude(nn.Module):
         #
         # p = torch.sign(u + v) * p
 
-        return p, angle*torch.clamp(F.threshold(p, 0.6, 0), 0, 1)
+        return p, angle*torch.clamp(F.threshold(p, 0.99999, 0), 0, 1)

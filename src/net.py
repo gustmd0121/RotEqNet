@@ -36,7 +36,7 @@ https://github.com/dmarcosg/RotEqNet
 """
 
 epoch_size = 3
-batch_size = 3
+batch_size = 10
 num_image = 70
 train_file = "Allogymnopleuri_#05"
 test_file = "Allogymnopleuri_#05"
@@ -53,12 +53,12 @@ if __name__ == '__main__':
             super(Net, self).__init__()
 
             self.main = nn.Sequential(
-                RotConv(1, 4, [3, 3], 1, 3 // 2, n_angles=17, mode=1),
+                RotConv(1, 4, [9, 9], 1, 9 // 2, n_angles=17, mode=1),
                 OrientationPooling(),
                 VectorBatchNorm(4),
                 SpatialPooling(2),
 
-                RotConv(4, 8, [3, 3], 1, 3 // 2, n_angles=17, mode=2),
+                RotConv(4, 8, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
                 OrientationPooling(),
                 VectorBatchNorm(8),
                 SpatialPooling(2),
@@ -68,20 +68,20 @@ if __name__ == '__main__':
                 # VectorBatchNorm(8),
                 # VectorUpsample(scale_factor=2),
 
-                RotConv(8, 4, [3, 3], 1, 3 // 2, n_angles=17, mode=2),
+                RotConv(8, 4, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
                 OrientationPooling(),
                 VectorBatchNorm(4),
                 VectorUpsample(scale_factor=2),
 
-                RotConv(4, 2, [3, 3], 1, 3 // 2, n_angles=17, mode=2),
+                RotConv(4, 2, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
                 OrientationPooling(),
                 VectorBatchNorm(2),
                 VectorUpsample(size=img_size),
 
-                RotConv(2, 1, [3, 3], 1, 3 // 2, n_angles=17, mode=2),
+                RotConv(2, 1, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
                 OrientationPooling(),
 
-                RotConv(1, 1, [3, 3], 1, 3 // 2, n_angles=17, mode=2),
+                RotConv(1, 1, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
                 OrientationPooling(),
 
                 VectorToMagnitude()
@@ -90,7 +90,7 @@ if __name__ == '__main__':
         def forward(self, x):
             x = self.main(x)
             y = F.relu(x[0])
-            y = F.threshold(y, 0.6, 0)
+            # y = F.threshold(y, 0.99999, 0)
             z = F.relu6(x[1])
             return (y, z)
 
@@ -263,7 +263,7 @@ if __name__ == '__main__':
             out1, out2 = net( data )
             loss1 = criterion1( out1.squeeze(1),labels[:, 0, :, :] )
             loss2 = criterion2( out2.squeeze(1),labels[:, 1, :, :] )
-            loss = loss1 + loss2
+            loss = loss1 + loss2 / (2 * math.pi)
             # print(loss1, loss2/ 360)
             #_, c = torch.max(out1, 1)
             loss.backward()
@@ -275,6 +275,8 @@ if __name__ == '__main__':
                 print('Train', 'epoch:', epoch_no,
                       ' batch:', batch_no,
                       ' loss:', loss.data.cpu().numpy(),
+                      ' loss1:', loss1.data.cpu().numpy(),
+                      ' loss2:', loss2.data.cpu().numpy(),
                       #' acc:', np.average((c == labels).data.cpu().numpy())
                       )
 
