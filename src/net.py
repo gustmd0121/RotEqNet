@@ -38,7 +38,7 @@ https://github.com/dmarcosg/RotEqNet
 epoch_size = 3
 batch_size = 10
 num_image = 70
-train_file = "Allogymnopleuri_#05"
+train_file = "Allogymnopleuri_#05" # to choose all -> "combined"
 test_file = "Allogymnopleuri_#05"
 base_folder = "./data/"
 if not os.path.isdir(base_folder):

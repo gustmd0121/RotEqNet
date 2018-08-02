@@ -7,32 +7,67 @@ from PIL import Image
 from ast import literal_eval
 import math
 from random import randint
+# Utils
+from framework.utils.utils import *
 
 class Parser:
-    def __init__(self, folder):
+    def __init__(self, folder, combined_folder):
         self.folder = folder
         self.img_size = (1080, 1920)
         self.new_img_size = self.img_size
         self.offset = []
+        self.combined_folder = combined_folder
+
+    def combine_numpy_arrays(self):
+        all_data = []
+        all_masks_beetle = []
+        all_masks_ball = []
+        print("")
+        print("Combining", "...")
+        if not os.path.isdir(self.folder + self.combined_folder):
+            os.mkdir(self.folder + self.combined_folder)
+        for sub_folder in os.listdir(self.folder):
+            sub_path = os.path.join(self.folder, sub_folder)
+            if os.path.isdir(sub_path) and sub_folder != self.combined_folder:
+                print("Loading ground truth", sub_folder, "...")
+                ground = np.load(self.folder + sub_folder +"/" + sub_folder + "_masks.npz")
+                print("Loading input", sub_folder, "...")
+                data = np.load(self.folder + sub_folder +"/" + sub_folder + "_input.npz")['data']
+                if len(all_data) == 0:
+                    all_data = data
+                    all_masks_beetle = ground['beetle']
+                    all_masks_ball = ground['ball']
+                else:
+                    all_data = np.append(all_data, data, axis=0)
+                    all_masks_beetle = np.append(all_masks_beetle, ground['beetle'], axis=0)
+                    all_masks_ball = np.append(all_masks_ball, ground['ball'], axis=0)
+        print("Compressing and saving ground truth numpy array ...")
+        np.savez_compressed(self.folder + self.combined_folder + "/" + self.combined_folder + "_masks", beetle=all_masks_beetle, ball=all_masks_ball)
+        print("Compressing and saving input numpy array ...")
+        np.savez_compressed(self.folder + self.combined_folder + "/" + self.combined_folder + "_input", data=all_data)
+        print("Finished combining", len(all_data), "images")
+
 
 
     def create_scaled_files(self, file, scale_factor, override = True):
-        print("")
-        print("Parsing", file, "...")
-        self.__generate_prop(file)
-        self.__generate_ground_truth(file, override, scale_factor)
-        self.__generate_images(file, override, scale_factor)
-        print("Finished", file + ".")
+        if file != self.combined_folder:
+            print("")
+            print("Parsing", file, "...")
+            self.__generate_prop(file)
+            self.__generate_ground_truth(file, override, scale_factor)
+            self.__generate_images(file, override, scale_factor)
+            print("Finished", file + ".")
 
 
     def create_cropped_files(self, file, new_size, center = "beetle", override = True):
-        print("")
-        print("Parsing", file, "...")
-        self.__generate_prop(file)
-        self.__calc_offset(file, new_size, center)
-        self.__generate_ground_truth(file, override)
-        self.__generate_images(file, override)
-        print("Finished", file + ".")
+        if file != self.combined_folder:
+            print("")
+            print("Parsing", file, "...")
+            self.__generate_prop(file)
+            self.__calc_offset(file, new_size, center)
+            self.__generate_ground_truth(file, override)
+            self.__generate_images(file, override)
+            print("Finished", file + ".")
 
 
     def __generate_prop(self, file):
