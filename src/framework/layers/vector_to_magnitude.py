@@ -1,6 +1,7 @@
 # Global imports
 import torch
 import torch.nn as nn
+from torch.nn import functional as F
 import math
 from pprint import pprint
 import numpy as np
@@ -12,6 +13,7 @@ class VectorToMagnitude(nn.Module):
     def forward(self, input):
         u = input[0]
         v = input[1]
+        p = torch.sqrt(v ** 2 + u ** 2)
 
         #angle = torch.atan(torch.abs(u / (v + 1e-8)))
         angle = torch.atan2(u, v) + math.pi
@@ -20,7 +22,6 @@ class VectorToMagnitude(nn.Module):
 
         # new
 
-        p = torch.sqrt(v ** 2 + u ** 2)
         # p = torch.sign(torch.sign(u) + torch.sign(v) + 0.1) * p
 
 
@@ -65,4 +66,4 @@ class VectorToMagnitude(nn.Module):
         #
         # p = torch.sign(u + v) * p
 
-        return p, angle
+        return p, angle*torch.clamp(F.threshold(p, 0.6, 0), 0, 1)

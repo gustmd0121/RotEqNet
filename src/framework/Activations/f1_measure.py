@@ -38,8 +38,7 @@ class F1Loss(nn.Module):
         return fbeta_score
 
     def f1measure_loss(self, y_true, y_pred):
-        return -0.5 * (self.fbeta_score_loss(y_true[0, 0, :, :], y_pred[0, 0, :, :], beta=1) + self.fbeta_score_loss(
-            y_true[0, 1, :, :], y_pred[0, 1, :, :], beta=1))
+        return -1 * self.fbeta_score_loss(y_true, y_pred, beta=1)
 
     def forward(self, input, target):
         return self.f1measure_loss(target, input)

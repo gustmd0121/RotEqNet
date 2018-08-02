@@ -19,6 +19,7 @@ from framework.layers import VectorToMagnitude
 from framework.layers import VectorBatchNorm
 from framework.layers import SpatialPooling
 from framework.layers import OrientationPooling
+from framework.Activations import F1Loss
 # Utils
 from framework.utils.utils import *
 
@@ -34,7 +35,7 @@ https://arxiv.org/abs/1612.09346
 https://github.com/dmarcosg/RotEqNet
 """
 
-epoch_size = 2
+epoch_size = 3
 batch_size = 3
 num_image = 70
 train_file = "Allogymnopleuri_#05"
@@ -77,17 +78,20 @@ if __name__ == '__main__':
                 VectorBatchNorm(2),
                 VectorUpsample(size=img_size),
 
-                RotConv(2, 1, [3, 3], 1, 3 // 2, n_angles=180, mode=2),
+                RotConv(2, 1, [3, 3], 1, 3 // 2, n_angles=17, mode=2),
                 OrientationPooling(),
 
+                RotConv(1, 1, [3, 3], 1, 3 // 2, n_angles=17, mode=2),
+                OrientationPooling(),
 
                 VectorToMagnitude()
             )
 
         def forward(self, x):
             x = self.main(x)
-            y = F.sigmoid(x[0])
-            z = F.relu(x[1])
+            y = F.relu(x[0])
+            y = F.threshold(y, 0.6, 0)
+            z = F.relu6(x[1])
             return (y, z)
 
 
@@ -97,8 +101,8 @@ if __name__ == '__main__':
     net = Net()
 
     # Net Parameters
-    criterion1 = nn.BCELoss()
-    criterion2 = nn.L1Loss()
+    criterion1 = F1Loss()
+    criterion2 = nn.SmoothL1Loss()
     if type(gpu_no) == int:
         net.cuda(gpu_no)
 
