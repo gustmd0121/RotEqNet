@@ -21,7 +21,7 @@ from framework.layers import VectorToMagnitude
 from framework.layers import VectorBatchNorm
 from framework.layers import SpatialPooling
 from framework.layers import OrientationPooling
-from framework.Activations import F1Loss
+from framework.loss import F1Loss
 # Utils
 from framework.utils.utils import *
 
@@ -240,8 +240,10 @@ if __name__ == '__main__':
         im = ax.imshow(magnitude)
 
         def pol2cart(magnitude_map, angle_map):
-            u = magnitude_map * np.cos(angle_map)
-            v = magnitude_map * np.sin(angle_map)
+            # This is equivalent to switching u and v in the quiver function
+            angle_map_zero_up = ((2 * math.pi - angle_map) + 0.5 * math.pi) % (2 * math.pi)
+            u = magnitude_map * np.cos(angle_map_zero_up)
+            v = magnitude_map * np.sin(angle_map_zero_up)
             return u, v
 
         def xy_coords():
