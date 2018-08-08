@@ -198,6 +198,11 @@ class Parser:
         with open(file_name) as f:
             props = [literal_eval(line) for line in f.readlines()]
 
+        if len(self.offset) == 0:
+            self.offset = []
+            for i in range(0,len(props)):
+                self.offset.append([0, 0])
+
         if(len(props) != len(self.offset)):
             print("You have to call parse before calc_offset().")
             return

@@ -73,10 +73,10 @@ if __name__ == '__main__':
                 RotConv(2, 1, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
                 OrientationPooling(),
 
-                RotConv(1, 1, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
-                OrientationPooling(),
+                # RotConv(1, 1, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
+                # OrientationPooling(),
 
-                VectorToMagnitude(0.99999)
+                VectorToMagnitude(0.7)
             )
 
         def forward(self, x):
@@ -84,7 +84,7 @@ if __name__ == '__main__':
             # magnitude
             y = F.relu(x[0])
             # angle
-            z = F.relu6(x[1])
+            z = F.relu(x[1])
             return (y, z)
 
 
@@ -138,7 +138,6 @@ if __name__ == '__main__':
             mask_data[i][1] = mask_data[i][1] * math.pi / 180
         train = list(zip(imgs, mask_data))
 
-
         # testfiles
         imgs =  np.load(base_folder + test + "/" + test + "_input.npz")['data']
         for i in range(len(imgs)):
@@ -177,7 +176,7 @@ if __name__ == '__main__':
                 out1, out2 = net( data )
                 loss1 = criterion1( out1.squeeze(1),labels[:, 0, :, :] )
                 loss2 = criterion2( out2.squeeze(1),labels[:, 1, :, :] )
-                loss = loss1 + loss2 / (2 * math.pi)
+                loss = loss1 + loss2 # / (2 * math.pi)
                 loss.backward()
 
                 optimizer.step()
@@ -194,6 +193,7 @@ if __name__ == '__main__':
             adjust_learning_rate(optimizer, epoch_no)
             torch.save(net.state_dict(), model_file)
 
+
     def load(net):
         net.load_state_dict(torch.load(model_file))
         if type(gpu_no) == int:
@@ -208,7 +208,7 @@ if __name__ == '__main__':
         xyz = net(image)
         magnitude = xyz[0].data.cpu().numpy().squeeze(0).squeeze(0)
         angles = xyz[1].data.cpu().numpy().squeeze(0).squeeze(0)
-        print("Angle:",str(get_average_angle(magnitude, angles, 0.15)*180/math.pi))
+        print("Angle:",str(get_average_angle(magnitude, angles)*180/math.pi))
         print("Real Angle:",np.max(test_set[test_image][1][1])*180/math.pi)
         # print("Angle, x=138:", test_set[test_image][1][1][138]*180/math.pi)
         # print("Real Angle, x=138:", angles[138]*180/math.pi)
@@ -258,7 +258,6 @@ if __name__ == '__main__':
 
         # ax.quiver(x[skip], y[skip], angles= angles, color = 'w')
 
-        # angles = angles*180/math.pi
         magnitude[magnitude < tresh] = 0
         (u, v) = pol2cart(magnitude, angles)
         (x, y) = xy_coords()
@@ -269,7 +268,7 @@ if __name__ == '__main__':
 
         # print(np.max(angles))
 
-        ax.quiver(x, y, u, v, color='w')
+        ax.quiver(x, y, u, v, color='w') # ), scale_unit="inches", scale=0.5)
         fig.colorbar(im)
         ax.set(aspect=1, title='Quiver Plot')
         plt.show()
@@ -287,19 +286,19 @@ if __name__ == '__main__':
     train_file = "Allogymnopleuri_#05" # to choose all -> "combined"
     test_file = "Allogymnopleuri_#05"
     train_set, val_set,  test_set = load_data(train_file, test_file)
-    model_file = "model.pt"
+    model_file = train_file + "_model.pt"
     if(len(sys.argv) == 4):
-        model_file = sys.argv[3] + ".pt"
+        model_file = train_file + "_" + sys.argv[3] + ".pt"
 
 
     # Setup net, loss function, optimizer and hyper parameters
     start_lr = 0.01
     epoch_size = 3
-    if(len(sys.argv) == 3 and sys.argv[1] == "train"):
+    if(len(sys.argv) > 2 and sys.argv[1] == "train"):
         epoch_size = (int)(sys.argv[2])
     batch_size = 10
     test_image = 70
-    if(len(sys.argv) == 3 and sys.argv[1] == "test"):
+    if(len(sys.argv) > 2 and sys.argv[1] == "test"):
         test_image = (int)(sys.argv[2])
     # magnitude
     criterion1 = F1Loss()
@@ -309,7 +308,7 @@ if __name__ == '__main__':
     gpu_no =  0 # Set to False for cpu-version
 
     # test param
-    tresh = 0.8
+    tresh = 0.0
 
 
     if(len(sys.argv) == 1):
