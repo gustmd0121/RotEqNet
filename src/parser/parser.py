@@ -274,6 +274,8 @@ class Parser:
                     mask[i][0][y][x] = 1
                     if hasdir:
                         mask[i][1][y][x] = dir
+                    else:
+                        mask[i][1][y][x] = math.nan
         return mask
 
 

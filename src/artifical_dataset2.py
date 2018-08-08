@@ -44,6 +44,7 @@ img[0:0 + box_height, 0:0 + box_width_full] = box_white_t1
 img[box_height:box_height + 50, 27:27 + 26] = box_white_t2
 
 beetle_props = open(dataset_folder + "/" + "artificial_beetle_props.txt", 'w')
+ball_props = open(dataset_folder + "/" + "artificial_ball_props.txt", 'w')
 
 data_beetle = []
 
@@ -68,9 +69,4 @@ for i in range(0, num_images):
 # write data
 for x in data_beetle:
     beetle_props.write(str(x) + "\n")
-
-
-
-
-
-
+    ball_props.write(str(x) + "\n")
