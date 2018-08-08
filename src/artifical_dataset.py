@@ -4,7 +4,7 @@ import os
 
 # Params
 dataset_folder = "../data/artificial"
-img_folder = dataset_folder + "/artifical_imgs"
+img_folder = dataset_folder + "/artificial_imgs"
 
 if not os.path.exists(dataset_folder):
     os.makedirs(dataset_folder)
