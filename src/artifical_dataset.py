@@ -41,7 +41,7 @@ beetle_props = open(dataset_folder + "/" + "artificial_beetle_props.txt", 'w')
 data_beetle = []
 
 for i in range(0, num_images):
-    file_name = "artifical_" + str(i) + ".png"
+    file_name = "img_" +str(i).zfill(5) + ".png"
 
     random_angle = np.random.randint(0, 359)
     box = Image.fromarray(img)
