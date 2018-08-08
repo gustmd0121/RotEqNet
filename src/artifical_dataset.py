@@ -1,7 +1,17 @@
 from PIL import Image
 import numpy as np
+import os
 
 # Params
+dataset_folder = "../data/artificial"
+img_folder = dataset_folder + "/artifical_imgs"
+
+if not os.path.exists(dataset_folder):
+    os.makedirs(dataset_folder)
+
+if not os.path.exists(img_folder):
+    os.makedirs(img_folder)
+
 num_images = 5
 
 pos_x = 940
@@ -26,7 +36,7 @@ box_grey = np.array([128] * box_height * box_width).reshape(box_height, box_widt
 img[0:0 + box_height, 0:0 + box_width] = box_white
 img[0+box_height:0+box_height + box_height, 0:0 + box_width] = box_grey
 
-beetle_props = open("../data/artificial/artificial_beetle_props.txt", 'w')
+beetle_props = open(dataset_folder + "/" + "artificial_beetle_props.txt", 'w')
 
 data_beetle = []
 
@@ -40,7 +50,7 @@ for i in range(0, num_images):
     out.paste(rot, (pos_x, pos_y))
     if out.mode != 'RGB':
         out = out.convert('RGB')
-    out.save("../data/artificial/artificial_imgs/" + file_name, "PNG")
+    out.save(img_folder + "/" + file_name, "PNG")
 
     data_beetle.append((i, (pos_x, pos_y), rot.size, True, 360-random_angle, file_name))
 
