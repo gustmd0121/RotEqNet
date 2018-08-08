@@ -198,6 +198,11 @@ class Parser:
         with open(file_name) as f:
             props = [literal_eval(line) for line in f.readlines()]
 
+        if len(self.offset) == 0:
+            self.offset = []
+            for i in range(0,len(props)):
+                self.offset.append([0, 0])
+
         if(len(props) != len(self.offset)):
             print("You have to call parse before calc_offset().")
             return
@@ -269,6 +274,8 @@ class Parser:
                     mask[i][0][y][x] = 1
                     if hasdir:
                         mask[i][1][y][x] = dir
+                    else:
+                        mask[i][1][y][x] = math.nan
         return mask
 
 

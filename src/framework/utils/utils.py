@@ -142,7 +142,6 @@ def apply_transform(filter, interp_vars, filters_size, old_bilinear_interpolatio
 
     if dim == 2:
 
-
         if old_bilinear_interpolation:
             [x0_0, x1_0], [x0_1, x1_1], [w0, w1] = interp_vars
             rotated_filter = (filter[:, :, x0_0, x1_0] * (1 - w0) * (1 - w1) +
@@ -229,17 +228,15 @@ def treshhold(mat,  treshhold=0.5):
     return mat
 
 
-def get_average_angle(magnitude, angle, treshhold=0.65):
+def get_average_angle(magnitude, angle):
     out_angle = 0
     num_angle = 0
     for i in range(len(magnitude)):
         for j in range(len(magnitude[0])):
-            if magnitude[i, j] > treshhold:
-                out_angle += angle[i, j]
-                num_angle += 1
+            out_angle += angle[i, j] * magnitude[i, j]
+            num_angle += magnitude[i, j]
     if num_angle == 0:
         return -1
-    print("Number of Pixel:", num_angle)
     return out_angle / num_angle
 
 

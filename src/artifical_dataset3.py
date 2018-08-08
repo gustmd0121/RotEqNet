@@ -1,6 +1,12 @@
 from PIL import Image
 import numpy as np
 import os
+import random
+
+def random_no_repeat(numbers):
+    number_list = list(numbers)
+    random.shuffle(number_list)
+    return number_list
 
 # Params
 dataset_folder = "../data/artificial"
@@ -17,7 +23,8 @@ num_images = 100
 pos_x = 940
 pos_y = 505
 
-box_height_full = 70
+box_height_full = 85
+box_width_full = 80
 
 box_height = 35
 box_width = 40
@@ -26,15 +33,15 @@ box_width = 40
 
 # Create images
 empty_img = np.zeros((1080, 1920))
-img = np.zeros((70, 40))
+img = np.zeros((box_height_full, box_width_full))
 
 # Create rectangle with front and back
-box_white = np.array([255] * box_height * box_width).reshape(box_height, box_width)
-box_grey = np.array([128] * box_height * box_width).reshape(box_height, box_width)
+box_white_t1 = np.array([255] * box_height * box_width_full).reshape(box_height, box_width_full)
+box_white_t2 = np.array([255] * 50 * 26).reshape(50, 26)
 
 # Replace original image with boxes
-img[0:0 + box_height, 0:0 + box_width] = box_white
-img[0+box_height:0+box_height + box_height, 0:0 + box_width] = box_grey
+img[0:0 + box_height, 0:0 + box_width_full] = box_white_t1
+img[box_height:box_height + 50, 27:27 + 26] = box_white_t2
 
 beetle_props = open(dataset_folder + "/" + "artificial_beetle_props.txt", 'w')
 ball_props = open(dataset_folder + "/" + "artificial_ball_props.txt", 'w')

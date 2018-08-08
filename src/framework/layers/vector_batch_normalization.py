@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 from torch.nn.parameter import Parameter
 from torch.autograd import Variable
+from framework.utils.utils import *
 
 
 class VectorBatchNorm(nn.Module):
@@ -53,8 +54,8 @@ class VectorBatchNorm(nn.Module):
             self.running_var *= (1. - self.momentum)
             self.running_var += self.momentum * std.data ** 2
             # compute output
-            u = input[0] * alpha
-            v = input[1] * alpha
+            u = input[0] * Variable(alpha)
+            v = input[1] * Variable(alpha)
 
         else:
             alpha = self.weight.data / torch.sqrt(self.running_var + self.eps)
