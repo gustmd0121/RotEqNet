@@ -53,7 +53,7 @@ for i in range(0, num_images):
 
     random_angle = np.random.randint(0, 359)
     box = Image.fromarray(img)
-    rot = box.rotate(360-random_angle, expand=1)
+    rot = box.rotate(540-random_angle, expand=1)
     out = Image.fromarray(empty_img)
     out.paste(rot, (pos_x, pos_y))
     if out.mode != 'RGB':
