@@ -21,7 +21,7 @@ from framework.layers import VectorToMagnitude
 from framework.layers import VectorBatchNorm
 from framework.layers import SpatialPooling
 from framework.layers import OrientationPooling
-from framework.loss import F1Loss
+from framework.loss import F1Loss, Angle_Loss
 # Utils
 from framework.utils.utils import *
 
