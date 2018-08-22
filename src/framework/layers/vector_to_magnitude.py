@@ -19,4 +19,4 @@ class VectorToMagnitude(nn.Module):
 
         angle = torch.atan2(u, v) + math.pi
 
-        return p, angle*torch.clamp(F.threshold(pmax, self.tresh, 0), 0, 1)
+        return p, angle #*torch.clamp(F.threshold(pmax, self.tresh, 0), 0, 1)

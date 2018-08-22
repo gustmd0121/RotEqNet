@@ -303,7 +303,7 @@ if __name__ == '__main__':
     # magnitude
     criterion1 = F1Loss()
     # angle
-    criterion2 = nn.SmoothL1Loss()
+    criterion2 = Angle_Loss()
     net = Net()
     gpu_no =  0 # Set to False for cpu-version
 

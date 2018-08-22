@@ -113,8 +113,7 @@ class RotConv(nn.Module):
 
 
                 # Compute magnitude (p)
-                #p = torch.sqrt((u_out**2 + v_out**2)+ 1e-16)
-                p = u_out + v_out
+                p = torch.sqrt((u_out**2 + v_out**2) + 1e-16) # p = torch.sqrt(u_out**2 + v_out**2) doesnt work
                 outputs.append((p).unsqueeze(-1))
 
         # print("rotconv:", len(outputs), len(outputs[0]), len(outputs[0][0]), len(outputs[0][0][0]), len(outputs[0][0][0][0]))
