@@ -157,14 +157,16 @@ class Parser:
             #add missing
             for i in range(0,len(data_ball)):
                 if not(data_ball[i][0] in [x[0] for x in data_beetle]):
-                    data_beetle.insert(i, (i, (0, 0), (0, 0), False, 0, data_ball[i][5]))
+                    data_beetle.insert(data_ball[i][0], (data_ball[i][0], (0, 0), (0, 0), False, 0, data_ball[i][5]))
+            data_beetle.sort()
 
             #sort data
             data_ball.sort()
             #add missing
             for i in range(0,len(data_beetle)):
                 if not(data_beetle[i][0] in [x[0] for x in data_ball]):
-                    data_ball.insert(i, (i, (0, 0), (0, 0), False, 0, data_beetle[i][5]))
+                    data_ball.insert(data_beetle[i][0], (data_beetle[i][0], (0, 0), (0, 0), False, 0, data_beetle[i][5]))
+            data_ball.sort()
 
             #write data
             for x in data_beetle:
