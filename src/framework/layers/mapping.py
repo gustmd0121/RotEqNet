@@ -33,8 +33,14 @@ class Mapping(nn.Module):
         weights_u = weights_u.cuda()
         weights_v = weights_v.cuda()
 
-        u_out = F.conv2d(u, weights_u, stride=[1], padding=[self.kernel_size // 2], dilation=[1])
-        v_out = F.conv2d(v, weights_v, stride=[1], padding=[self.kernel_size // 2], dilation=[1])
+        u.squeeze_(-1)
+        v.squeeze_(-1)
+
+        print(v.size())
+        print(weights_v.size())
+
+        u_out = F.conv2d(u, weights_u, None, 1, self.kernel_size // 2, 1)
+        v_out = F.conv2d(v, weights_v, None, 1, self.kernel_size // 2, 1)
 
 
         return u_out, v_out

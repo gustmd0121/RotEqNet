@@ -81,13 +81,13 @@ if __name__ == '__main__':
             self.fc = nn.Sequential(
                 RotConv(1, 4, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
                 OrientationPooling(),
-                SpatialPooling(2),
+                SpatialPooling(4),
 
-                RotConv(4, 8, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
+                RotConv(4, 2, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
                 OrientationPooling(),
-                SpatialPooling(2),
+                SpatialPooling(4),
 
-                RotConv(8, 17, [16, 16], 1, n_angles=17, mode=2),
+                RotConv(2, 1, [16, 16], 1, n_angles=17, mode=2),
 
             )
             self.hardcoded = Mapping()
@@ -103,7 +103,7 @@ if __name__ == '__main__':
             a = F.relu(a)
             z = self.fc(x)[0]
             z = self.hardcoded(z)
-            z = F.softmax(z)
+            z = F.softmax(z[0])
             return y, a, z
 
 
@@ -196,6 +196,7 @@ if __name__ == '__main__':
                 data, labels = getBatch(train_set_for_epoch)
                 out1, out2, out3 = net(data)
                 loss1 = criterion1(out1.squeeze(1), labels[:, 0, :, :])
+                print(out3.data.cpu().numpy())
                 loss2 = criterion2(out3.squeeze(1), torch.max(labels[:, 1, :, :], dim=2)[0].unsqueeze(2).long())
                 loss = loss1 + loss2  # / (2 * math.pi)
                 loss.backward()
