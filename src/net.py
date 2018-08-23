@@ -76,13 +76,19 @@ if __name__ == '__main__':
 
                 # RotConv(1, 1, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
                 # OrientationPooling(),
-
-                Mapping(),
+            )
+            self.hardcoded = nn.Sequential(
+                Mapping()
+            )
+            self.output = nn.Sequential(
                 VectorToMagnitude(0.9)
             )
 
         def forward(self, x):
             x = self.main(x)
+            x = self.hardcoded(x)
+            x = self.output(x)
+
             # magnitude
             y = F.relu(x[0])
             # angle
@@ -158,7 +164,11 @@ if __name__ == '__main__':
         if type(gpu_no) == int:
             net.cuda(gpu_no)
 
-        optimizer = optim.Adam(net.parameters(), lr=start_lr)  # , weight_decay=0.01)
+        optimizer = optim.Adam([{'params': net.main.parameters()},
+                                {'params': net.hardcoded.parameters(), 'lr': 0},
+                                {'params': net.output.parameters()}
+                                ]
+                               , lr=start_lr)  # , weight_decay=0.01)
         # best_acc = 0
 
         for epoch_no in range(epoch_size):
