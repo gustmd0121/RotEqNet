@@ -76,16 +76,34 @@ if __name__ == '__main__':
                 # RotConv(1, 1, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
                 # OrientationPooling(),
 
-                VectorToMagnitude(0.9)
             )
+
+            self.fc = nn.Sequential(
+                RotConv(1, 4, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
+                OrientationPooling(),
+                SpatialPooling(2),
+
+                RotConv(4, 8, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
+                OrientationPooling(),
+                SpatialPooling(2),
+
+                RotConv(8, 17, [16, 16], 1, n_angles=17, mode=2),
+                OrientationPooling(),
+                VectorToMagnitude(0.9),
+            )
+
+            self.toMag = VectorToMagnitude(0.9)
 
         def forward(self, x):
             x = self.main(x)
             # magnitude
             y = F.relu(x[0])
+            y, a = self.toMag(y)
             # angle
-            z = F.relu(x[1])
-            return (y, z)
+            a = F.relu(a)
+            z = self.fc(x)[0]
+            z = F.softmax(z)
+            return y, a, z
 
 
     def adjust_learning_rate(optimizer, epoch):
@@ -173,9 +191,9 @@ if __name__ == '__main__':
                 optimizer.zero_grad()
 
                 data, labels = getBatch(train_set_for_epoch)
-                out1, out2 = net( data )
-                loss1 = criterion1( out1.squeeze(1),labels[:, 0, :, :] )
-                loss2 = criterion2( out2.squeeze(1),labels[:, 1, :, :] )
+                out1, out2, out3 = net( data )
+                loss1 = criterion1(out1.squeeze(1), labels[:, 0, :, :])
+                loss2 = criterion2(out3.squeeze(1), torch.max(labels[:, 1, :, :], dim=2)[0].unsqueeze(2).long())
                 loss = loss1 + loss2 # / (2 * math.pi)
                 loss.backward()
 
@@ -278,7 +296,7 @@ if __name__ == '__main__':
 
     #------MAIN------
     # Load datasets
-    img_size = (300, 400)
+    img_size = (256, 256)
     base_folder = "./data/"
     # workaround
     if not os.path.isdir(base_folder):
@@ -296,14 +314,14 @@ if __name__ == '__main__':
     epoch_size = 3
     if(len(sys.argv) > 2 and sys.argv[1] == "train"):
         epoch_size = (int)(sys.argv[2])
-    batch_size = 10
+    batch_size = 2
     test_image = 70
     if(len(sys.argv) > 2 and sys.argv[1] == "test"):
         test_image = (int)(sys.argv[2])
     # magnitude
     criterion1 = F1Loss()
     # angle
-    criterion2 = Angle_Loss()
+    criterion2 = nn.CrossEntropyLoss()
     net = Net()
     gpu_no =  0 # Set to False for cpu-version
 
