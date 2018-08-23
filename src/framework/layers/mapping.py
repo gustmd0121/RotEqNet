@@ -1,4 +1,5 @@
 # Global imports
+import math
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
@@ -20,18 +21,20 @@ class Mapping(nn.Module):
         weights_u = torch.randn(self.output_channels, self.input_channels, self.kernel_size, self.kernel_size)
         weights_v = torch.randn(self.output_channels, self.input_channels, self.kernel_size, self.kernel_size)
 
+
         start = 1/self.output_channels
-        end = 2*torch.pi
+        end = 2*math.pi
         step = end/self.output_channels
 
         for i in range(0, self.output_channels):
-            weights_u[i, 1, 1, 1] = 0.01*torch.sin(start + i*step)
-            weights_v[i, 1, 1, 1] = 0.01*torch.cos(start + i*step)
+            weights_u[i, :, :, :] = 0.01*torch.sin(torch.tensor(start + i*step))
+            weights_v[i, :, :, :] = 0.01*torch.cos(torch.tensor(start + i*step))
 
         weights_u = weights_u.cuda()
         weights_v = weights_v.cuda()
 
-        u_out = F.conv2d(u, weights_u, None, 1, self.kernel_size // 2)
-        v_out = F.conv2d(v, weights_v, None, 1, self.kernel_size // 2)
+        u_out = F.conv2d(u, weights_u, stride=[1], padding=[self.kernel_size // 2], dilation=[1])
+        v_out = F.conv2d(v, weights_v, stride=[1], padding=[self.kernel_size // 2], dilation=[1])
+
 
         return u_out, v_out
