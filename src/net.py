@@ -21,6 +21,7 @@ from framework.layers import VectorToMagnitude
 from framework.layers import VectorBatchNorm
 from framework.layers import SpatialPooling
 from framework.layers import OrientationPooling
+from framework.layers import Mapping
 from framework.loss import F1Loss, Angle_Loss
 # Utils
 from framework.utils.utils import *
@@ -46,36 +47,37 @@ if __name__ == '__main__':
 
             self.main = nn.Sequential(
                 # 300x400
-                RotConv(1, 4, [9, 9], 1, 9 // 2, n_angles=17, mode=1),
+                RotConv(1, 4, [9, 9], 1, 9 // 2, n_angles=21, mode=1),
                 OrientationPooling(),
                 VectorBatchNorm(4),
                 SpatialPooling(2),
 
                 # 150x200
-                RotConv(4, 8, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
+                RotConv(4, 8, [9, 9], 1, 9 // 2, n_angles=21, mode=2),
                 OrientationPooling(),
                 VectorBatchNorm(8),
                 SpatialPooling(2),
 
                 # 75x100
-                RotConv(8, 4, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
+                RotConv(8, 4, [9, 9], 1, 9 // 2, n_angles=21, mode=2),
                 OrientationPooling(),
                 VectorBatchNorm(4),
                 VectorUpsample(scale_factor=2),
 
                 # 150x200
-                RotConv(4, 2, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
+                RotConv(4, 2, [9, 9], 1, 9 // 2, n_angles=21, mode=2),
                 OrientationPooling(),
                 VectorBatchNorm(2),
                 VectorUpsample(size=img_size),
 
                 # 300x400
-                RotConv(2, 1, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
+                RotConv(2, 1, [9, 9], 1, 9 // 2, n_angles=21, mode=2),
                 OrientationPooling(),
 
                 # RotConv(1, 1, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
                 # OrientationPooling(),
 
+                Mapping(),
                 VectorToMagnitude(0.9)
             )
 
@@ -283,8 +285,8 @@ if __name__ == '__main__':
     # workaround
     if not os.path.isdir(base_folder):
         base_folder = "." + base_folder
-    train_file = "Allogymnopleuri_#05" # to choose all -> "combined"
-    test_file = "Allogymnopleuri_#05"
+    train_file = "Lamarcki_#15" # to choose all -> "combined"
+    test_file = "Lamarcki_#15"
     train_set, val_set,  test_set = load_data(train_file, test_file)
     model_file = train_file + "_model.pt"
     if(len(sys.argv) == 4):
