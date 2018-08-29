@@ -111,9 +111,8 @@ class RotConv(nn.Module):
                 wrv = torch.sin(angle) * wu + torch.cos(angle) * wv
                 v_out = F.conv2d(v, wrv, None, self.stride, self.padding, self.dilation)
 
-
-                # Compute magnitude (p)
-                p = torch.sqrt((u_out**2 + v_out**2) + 1e-16) # p = torch.sqrt(u_out**2 + v_out**2) doesnt work
+                p = u_out + v_out
+                p = F.relu(p)
                 outputs.append((p).unsqueeze(-1))
 
         # print("rotconv:", len(outputs), len(outputs[0]), len(outputs[0][0]), len(outputs[0][0][0]), len(outputs[0][0][0][0]))

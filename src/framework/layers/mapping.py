@@ -8,7 +8,7 @@ from torch.autograd import Variable
 
 
 class Mapping(nn.Module):
-    def __init__(self, input_channels=1, output_channels=21, kernel_size=1):
+    def __init__(self, input_channels=1, output_channels=17, kernel_size=1):
         super(Mapping, self).__init__()
         self.input_channels = input_channels
         self.output_channels = output_channels
@@ -21,7 +21,6 @@ class Mapping(nn.Module):
         weights_u = torch.randn(self.output_channels, self.input_channels, self.kernel_size, self.kernel_size)
         weights_v = torch.randn(self.output_channels, self.input_channels, self.kernel_size, self.kernel_size)
 
-
         start = 1/self.output_channels
         end = 2*math.pi
         step = end/self.output_channels
@@ -33,14 +32,7 @@ class Mapping(nn.Module):
         weights_u = weights_u.cuda()
         weights_v = weights_v.cuda()
 
-        u.squeeze_(-1)
-        v.squeeze_(-1)
-
-        print(v.size())
-        print(weights_v.size())
-
-        u_out = F.conv2d(u, weights_u, None, 1, self.kernel_size // 2, 1)
-        v_out = F.conv2d(v, weights_v, None, 1, self.kernel_size // 2, 1)
-
+        u_out = F.conv2d(u.squeeze(-1), weights_u, None, 1, self.kernel_size // 2, 1)
+        v_out = F.conv2d(v.squeeze(-1), weights_v, None, 1, self.kernel_size // 2, 1)
 
         return u_out, v_out

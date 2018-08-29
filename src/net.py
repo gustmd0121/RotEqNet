@@ -45,48 +45,48 @@ if __name__ == '__main__':
             super(Net, self).__init__()
 
             self.main = nn.Sequential(
-                # 300x400
+                # 256x256
                 RotConv(1, 4, [9, 9], 1, 9 // 2, n_angles=17, mode=1),
                 OrientationPooling(),
                 VectorBatchNorm(4),
                 SpatialPooling(2),
 
-                # 150x200
+                # 128x128
                 RotConv(4, 8, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
                 OrientationPooling(),
                 VectorBatchNorm(8),
                 SpatialPooling(2),
 
-                # 75x100
+                # 64x64
                 RotConv(8, 4, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
                 OrientationPooling(),
                 VectorBatchNorm(4),
                 VectorUpsample(scale_factor=2),
 
-                # 150x200
+                # 128x128
                 RotConv(4, 2, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
                 OrientationPooling(),
                 VectorBatchNorm(2),
                 VectorUpsample(size=img_size),
 
-                # 300x400
+                # 256x256
                 RotConv(2, 1, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
                 OrientationPooling(),
-
-                # RotConv(1, 1, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
-                # OrientationPooling(),
 
             )
 
             self.fc = nn.Sequential(
+                # 256x256
                 RotConv(1, 4, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
                 OrientationPooling(),
                 SpatialPooling(4),
 
+                # 64x64
                 RotConv(4, 2, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
                 OrientationPooling(),
                 SpatialPooling(4),
 
+                # 16x16
                 RotConv(2, 1, [16, 16], 1, n_angles=17, mode=2),
 
             )
@@ -95,6 +95,7 @@ if __name__ == '__main__':
             self.toMag = VectorToMagnitude(0.9)
 
         def forward(self, x):
+            #TODO: batch!!
             x = self.main(x)
             # magnitude
             y = F.relu(x[0])
@@ -103,8 +104,9 @@ if __name__ == '__main__':
             a = F.relu(a)
             z = self.fc(x)[0]
             z = self.hardcoded(z)
-            z = F.softmax(z[0])
-            return y, a, z
+            z, ra = self.toMag(z)
+            ra = F.softmax(ra[0])
+            return y, a, ra
 
 
     def adjust_learning_rate(optimizer, epoch):
@@ -154,7 +156,7 @@ if __name__ == '__main__':
         np.swapaxes(imgs, 0, 1)
         mask_data = np.load(base_folder + train + "/" + train + "_masks.npz")['beetle']
         for i in range(len(mask_data)):
-            mask_data[i][1] = mask_data[i][1] * math.pi / 180
+            mask_data[i][1] = mask_data[i][1]# * math.pi / 180
         train = list(zip(imgs, mask_data))
 
         # testfiles
@@ -164,7 +166,7 @@ if __name__ == '__main__':
 
         mask_data = np.load(base_folder + test + "/" + test + "_masks.npz")['beetle']
         for i in range(len(mask_data)):
-            mask_data[i][1] = mask_data[i][1] * math.pi / 180
+            mask_data[i][1] = mask_data[i][1]# * math.pi / 180
         test = list(zip(imgs, mask_data))
 
         return train, train, test
@@ -195,9 +197,23 @@ if __name__ == '__main__':
 
                 data, labels = getBatch(train_set_for_epoch)
                 out1, out2, out3 = net(data)
+
+                # angle mapping
+                dir = torch.max(labels[: , 1, :, :]).data.cpu().numpy()
+                for i in range(0,len(out3)):
+                    if abs(i * (360/(len(out3)-1)) - dir) <= (360/((len(out3)-1)*2)):
+                        a = i
+
+                # angle radiant
+                a = a * math.pi / 180
+                a = torch.tensor(a)
+
+                # angle gpu
+                a = a.cuda()
+                a = a.long()
+
                 loss1 = criterion1(out1.squeeze(1), labels[:, 0, :, :])
-                print(out3.data.cpu().numpy())
-                loss2 = criterion2(out3.squeeze(1), torch.max(labels[:, 1, :, :], dim=2)[0].unsqueeze(2).long())
+                loss2 = criterion2(out3.squeeze().unsqueeze(0), a.unsqueeze(0))
                 loss = loss1 + loss2  # / (2 * math.pi)
                 loss.backward()
 
