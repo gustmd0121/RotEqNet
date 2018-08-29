@@ -336,6 +336,9 @@ TSWLatexianTemp*
 # standalone packages
 *.sta
 
+# TexStudio
+*.txss
+
 ### LaTeX Patch ###
 # glossaries
 *.glstex
