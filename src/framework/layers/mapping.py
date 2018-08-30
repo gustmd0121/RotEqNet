@@ -6,15 +6,16 @@ from torch.nn import functional as F
 from torch.nn.parameter import Parameter
 from torch.autograd import Variable
 
-
+# ???
 class Mapping(nn.Module):
-    def __init__(self, input_channels=1, output_channels=17, kernel_size=1):
+    def __init__(self, input_channels=1, output_channels=21, kernel_size=1):
         super(Mapping, self).__init__()
         self.input_channels = input_channels
         self.output_channels = output_channels
         self.kernel_size = kernel_size
 
     def forward(self, input):
+        # lists from rotconv
         u = input[0]
         v = input[1]
 

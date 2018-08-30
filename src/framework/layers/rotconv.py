@@ -43,7 +43,7 @@ class RotConv(nn.Module):
 
             self.angle_tensors.append(Variable(torch.FloatTensor(np.array([angle / 180. * np.pi]))))
 
-        if(self.mode==2):
+        if(self.mode>=2):
             self.weight1 = Parameter(torch.Tensor(out_channels, in_channels, *kernel_size))
             # If input is vector field, we have two filters (one for each component)
             # if self.mode == 2:
@@ -60,7 +60,7 @@ class RotConv(nn.Module):
             n *= k
         stdv = 1. / math.sqrt(n)
         self.weight1.data.uniform_(-stdv, stdv)
-        if self.mode == 2:
+        if self.mode >= 2:
             self.weight2.data.uniform_(-stdv, stdv)
 
     def _apply(self, func):
@@ -74,6 +74,8 @@ class RotConv(nn.Module):
 
     def forward(self, input):
         outputs = []
+        outputs_u = []
+        outputs_v = []
         if self.mode == 1:
             input.unsqueeze_(1)
             outputs = []
@@ -86,6 +88,9 @@ class RotConv(nn.Module):
                 # Do convolution
                 out = F.conv2d(input, weight, None, self.stride, self.padding, self.dilation)
                 outputs.append(out.unsqueeze(-1))
+
+            # print("rotconv:", len(outputs), len(outputs[0]), len(outputs[0][0]), len(outputs[0][0][0]), len(outputs[0][0][0][0]))
+            return outputs, self.angles
 
         elif self.mode == 2:
             u = input[0]
@@ -115,5 +120,35 @@ class RotConv(nn.Module):
                 p = F.relu(p)
                 outputs.append((p).unsqueeze(-1))
 
-        # print("rotconv:", len(outputs), len(outputs[0]), len(outputs[0][0]), len(outputs[0][0][0]), len(outputs[0][0][0][0]))
-        return outputs, self.angles
+            # print("rotconv:", len(outputs), len(outputs[0]), len(outputs[0][0]), len(outputs[0][0][0]), len(outputs[0][0][0][0]))
+            return outputs, self.angles
+
+
+        elif self.mode == 3:
+            u = input[0]
+            v = input[1]
+            # Loop through the different filter-transformations
+            for ind, interp_vars in enumerate(self.interp_vars):
+                angle = self.angle_tensors[ind]
+                # Apply rotation
+                wu = apply_transform(self.weight1, interp_vars, self.kernel_size)
+                wv = apply_transform(self.weight2, interp_vars, self.kernel_size)
+
+                # Do convolution for u
+                from pprint import pprint
+                #pprint(wu.shape)
+                #pprint(angle)
+                #pprint(torch.cos(angle))
+                #pprint(torch.cos(angle))
+                #pprint(angle)
+                wru = torch.cos(angle) * wu - torch.sin(angle) * wv
+                u_out = F.conv2d(u, wru, None, self.stride, self.padding, self.dilation)
+
+                # Do convolution for v
+                wrv = torch.sin(angle) * wu + torch.cos(angle) * wv
+                v_out = F.conv2d(v, wrv, None, self.stride, self.padding, self.dilation)
+
+                outputs_u.append(u_out)
+                outputs_v.append(v_out)
+
+            return outputs_u, outputs_v

@@ -46,53 +46,55 @@ if __name__ == '__main__':
 
             self.main = nn.Sequential(
                 # 256x256
-                RotConv(1, 4, [9, 9], 1, 9 // 2, n_angles=17, mode=1),
+                RotConv(1, 4, [9, 9], 1, 9 // 2, n_angles=21, mode=1),
                 OrientationPooling(),
                 VectorBatchNorm(4),
                 SpatialPooling(2),
 
                 # 128x128
-                RotConv(4, 8, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
+                RotConv(4, 8, [9, 9], 1, 9 // 2, n_angles=21, mode=2),
                 OrientationPooling(),
                 VectorBatchNorm(8),
                 SpatialPooling(2),
 
                 # 64x64
-                RotConv(8, 4, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
+                RotConv(8, 4, [9, 9], 1, 9 // 2, n_angles=21, mode=2),
                 OrientationPooling(),
                 VectorBatchNorm(4),
                 VectorUpsample(scale_factor=2),
 
                 # 128x128
-                RotConv(4, 2, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
+                RotConv(4, 2, [9, 9], 1, 9 // 2, n_angles=21, mode=2),
                 OrientationPooling(),
                 VectorBatchNorm(2),
                 VectorUpsample(size=img_size),
 
                 # 256x256
-                RotConv(2, 1, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
+                RotConv(2, 1, [9, 9], 1, 9 // 2, n_angles=21, mode=2),
                 OrientationPooling(),
 
             )
 
             self.fc = nn.Sequential(
                 # 256x256
-                RotConv(1, 4, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
+                RotConv(1, 4, [9, 9], 1, 9 // 2, n_angles=21, mode=1),
                 OrientationPooling(),
                 SpatialPooling(4),
 
                 # 64x64
-                RotConv(4, 2, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
+                RotConv(4, 2, [9, 9], 1, 9 // 2, n_angles=21, mode=2),
                 OrientationPooling(),
                 SpatialPooling(4),
 
                 # 16x16
-                RotConv(2, 1, [16, 16], 1, n_angles=17, mode=2),
-
+                RotConv(2, 1, [16, 16], 1, 0, n_angles=21, mode=3),
             )
-            self.hardcoded = Mapping()
+            self.hardcoded = nn.Sequential(
+                Mapping(),
+                VectorToMagnitude(),
+            )
 
-            self.toMag = VectorToMagnitude(0.9)
+            self.toMag = VectorToMagnitude()
 
         def forward(self, x):
             #TODO: batch!!
@@ -101,11 +103,10 @@ if __name__ == '__main__':
             y = F.relu(x[0])
             y, a = self.toMag(y)
             # angle
-            a = F.relu(a)
-            z = self.fc(x)[0]
-            z = self.hardcoded(z)
-            z, ra = self.toMag(z)
-            ra = F.softmax(ra[0])
+            z = F.relu(y)
+            z = self.fc(z)
+            z, ra = self.hardcoded(z)
+            ra = F.softmax(ra)
             return y, a, ra
 
 
