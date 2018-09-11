@@ -4,13 +4,13 @@ import torch.nn as nn
 from torch.nn import functional as F
 from torch.nn.parameter import Parameter
 import math
-from pprint import pprint
 
 # Local imports
 from ..utils import *
 
 
 class RotConv(nn.Module):
+    """ Convolves roateted filters with input. """
 
     def __init__(self, in_channels, out_channels, kernel_size, stride=1,
                  padding=0, dilation=1, n_angles=8, mode=1):
@@ -28,6 +28,8 @@ class RotConv(nn.Module):
         self.padding = padding
         self.dilation = dilation
 
+        # mode = 1: input is 2D image
+        # mode = 2: input is a 2D vector-field
         self.mode = mode
 
         # Angles
@@ -43,18 +45,19 @@ class RotConv(nn.Module):
 
             self.angle_tensors.append(Variable(torch.FloatTensor(np.array([angle / 180. * np.pi]))))
 
-        if(self.mode==2):
-            self.weight1 = Parameter(torch.Tensor(out_channels, in_channels, *kernel_size))
+        if self.mode == 2:
             # If input is vector field, we have two filters (one for each component)
-            # if self.mode == 2:
+            self.weight1 = Parameter(torch.Tensor(out_channels, in_channels, *kernel_size))
             self.weight2 = Parameter(torch.Tensor(out_channels, in_channels, *kernel_size))
         else:
+            # Otherwise input is a 2D picture, just need one filter
             self.weight1 = Parameter(torch.Tensor(out_channels, 1, *kernel_size))
-            self.weight2 = Parameter(torch.Tensor(out_channels, 1, *kernel_size))
 
         self.reset_parameters()
 
     def reset_parameters(self):
+        """ Used to initialize weight matrices. """
+
         n = self.in_channels
         for k in self.kernel_size:
             n *= k
@@ -64,8 +67,13 @@ class RotConv(nn.Module):
             self.weight2.data.uniform_(-stdv, stdv)
 
     def _apply(self, func):
-        # This is called whenever user calls model.cuda()
-        # We intersect to replace tensors and variables with cuda-versions
+        """
+        This is called whenever user calls model.cuda().
+        We intersect to replace tensors and variables with cuda-versions.
+        :param func: function to apply
+        :return: callback to parent class
+        """
+
         self.mask = func(self.mask)
         self.interp_vars = [[[func(el2) for el2 in el1] for el1 in el0] for el0 in self.interp_vars]
         self.angle_tensors = [func(el) for el in self.angle_tensors]
@@ -98,12 +106,6 @@ class RotConv(nn.Module):
                 wv = apply_transform(self.weight2, interp_vars, self.kernel_size)
 
                 # Do convolution for u
-                from pprint import pprint
-                #pprint(wu.shape)
-                #pprint(angle)
-                #pprint(torch.cos(angle))
-                #pprint(torch.cos(angle))
-                #pprint(angle)
                 wru = torch.cos(angle) * wu - torch.sin(angle) * wv
                 u_out = F.conv2d(u, wru, None, self.stride, self.padding, self.dilation)
 
@@ -111,10 +113,8 @@ class RotConv(nn.Module):
                 wrv = torch.sin(angle) * wu + torch.cos(angle) * wv
                 v_out = F.conv2d(v, wrv, None, self.stride, self.padding, self.dilation)
 
+                p = u_out + v_out
 
-                # Compute magnitude (p)
-                p = torch.sqrt((u_out**2 + v_out**2) + 1e-16) # p = torch.sqrt(u_out**2 + v_out**2) doesnt work
                 outputs.append((p).unsqueeze(-1))
 
-        # print("rotconv:", len(outputs), len(outputs[0]), len(outputs[0][0]), len(outputs[0][0][0]), len(outputs[0][0][0][0]))
         return outputs, self.angles
