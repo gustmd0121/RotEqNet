@@ -72,7 +72,7 @@ if __name__ == '__main__':
                 RotConv(1, 1, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
                 OrientationPooling(),
 
-                VectorToMagnitude(0.9)
+                VectorToMagnitude()
             )
 
         def forward(self, x):
