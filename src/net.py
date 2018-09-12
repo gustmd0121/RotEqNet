@@ -13,9 +13,10 @@ import math
 from math import hypot
 import matplotlib.pyplot as plt
 import sys
+
 # Local imports
 # Layers
-from framework import RotConv
+from framework.layers import RotConv
 from framework.layers import VectorUpsample
 from framework.layers import VectorToMagnitude
 from framework.layers import VectorBatchNorm
@@ -25,18 +26,13 @@ from framework.loss import F1Loss, Angle_Loss
 # Utils
 from framework.utils.utils import *
 
-#!/usr/bin/env python
-__author__ = "Anders U. Waldeland"
-__email__ = "anders@nr.no"
-
 """
-A reproduction of the MNIST-classification network described in:
+An implementation to detect Dung Beetles and their orientation based on the concept proposed in:
 Rotation equivariant vector field networks (ICCV 2017)
 Diego Marcos, Michele Volpi, Nikos Komodakis, Devis Tuia
 https://arxiv.org/abs/1612.09346
 https://github.com/dmarcosg/RotEqNet
 """
-
 
 if __name__ == '__main__':
     # Define network
@@ -73,8 +69,8 @@ if __name__ == '__main__':
                 RotConv(2, 1, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
                 OrientationPooling(),
 
-                # RotConv(1, 1, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
-                # OrientationPooling(),
+                RotConv(1, 1, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
+                OrientationPooling(),
 
                 VectorToMagnitude(0.9)
             )
@@ -89,7 +85,12 @@ if __name__ == '__main__':
 
 
     def adjust_learning_rate(optimizer, epoch):
-        """Gradually decay learning rate"""
+        """
+        Gradually decay learning rate"
+        NOTE: Will be used in future implementation
+        :param optimizer: optimizer which should be used
+        :param epoch: current number of training epoch
+        """""
         if epoch == 4:
             lr = start_lr / 10
             for param_group in optimizer.param_groups:
@@ -128,7 +129,7 @@ if __name__ == '__main__':
 
     def load_data(train, test):
         # trainfiles
-        imgs =  np.load(base_folder + train + "/" + train + "_input.npz")['data']
+        imgs = np.load(base_folder + train + "/" + train + "_input.npz")['data']
         for i in range(len(imgs)):
             imgs[i] = imgs[i] / 255 - 0.5
 
@@ -139,7 +140,7 @@ if __name__ == '__main__':
         train = list(zip(imgs, mask_data))
 
         # testfiles
-        imgs =  np.load(base_folder + test + "/" + test + "_input.npz")['data']
+        imgs = np.load(base_folder + test + "/" + test + "_input.npz")['data']
         for i in range(len(imgs)):
             imgs[i] = imgs[i] / 255 - 0.5
 
@@ -157,32 +158,31 @@ if __name__ == '__main__':
             net.cuda(gpu_no)
 
         optimizer = optim.Adam(net.parameters(), lr=start_lr)  # , weight_decay=0.01)
-        # best_acc = 0
 
         for epoch_no in range(epoch_size):
 
-            #Random order for each epoch
-            train_set_for_epoch = train_set[:] #Make a copy
-            random.shuffle(train_set_for_epoch) #Shuffle the copy
+            # Random order for each epoch
+            train_set_for_epoch = train_set[:]   # Make a copy
+            random.shuffle(train_set_for_epoch)  # Shuffle the copy
 
             # Training
             net.train()
-            for batch_no in range(len(train_set)//batch_size):
+            for batch_no in range(len(train_set) // batch_size):
 
                 # Train
                 optimizer.zero_grad()
 
                 data, labels = getBatch(train_set_for_epoch)
-                out1, out2 = net( data )
-                loss1 = criterion1( out1.squeeze(1),labels[:, 0, :, :] )
-                loss2 = criterion2( out2.squeeze(1),labels[:, 1, :, :] )
-                loss = loss1 + loss2 # / (2 * math.pi)
+                out1, out2 = net(data)
+                loss1 = criterion1(out1.squeeze(1), labels[:, 0, :, :])
+                loss2 = criterion2(out2.squeeze(1), labels[:, 1, :, :])
+                loss = loss1 + loss2 / (2 * math.pi)
                 loss.backward()
 
                 optimizer.step()
 
                 # Print training-acc
-                if batch_no%10 == 0:
+                if batch_no % 10 == 0:
                     print('Train', 'epoch:', epoch_no,
                           ' batch:', batch_no,
                           ' loss:', loss.data.cpu().numpy(),
@@ -208,16 +208,16 @@ if __name__ == '__main__':
         xyz = net(image)
         magnitude = xyz[0].data.cpu().numpy().squeeze(0).squeeze(0)
         angles = xyz[1].data.cpu().numpy().squeeze(0).squeeze(0)
-        print("Angle:",str(get_average_angle(magnitude, angles)*180/math.pi))
-        print("Real Angle:",np.max(test_set[test_image][1][1])*180/math.pi)
+        print("Angle:", str(get_average_angle(magnitude, angles) * 180 / math.pi))
+        print("Real Angle:", np.max(test_set[test_image][1][1]) * 180 / math.pi)
         # print("Angle, x=138:", test_set[test_image][1][1][138]*180/math.pi)
         # print("Real Angle, x=138:", angles[138]*180/math.pi)
         magnitude = np.squeeze(magnitude)
-        mag = Image.fromarray(((magnitude)*255))
+        mag = Image.fromarray(((magnitude) * 255))
         print(mag.show(title='net'))
         # tresh = Image.fromarray(treshhold(magnitude, 0.15)*255)
         # print(tresh.show(title='tresh'))
-        orig = Image.fromarray((test_set[test_image][0][0]+0.5)*255)
+        orig = Image.fromarray((test_set[test_image][0][0] + 0.5) * 255)
         print(orig.show(title='orig'))
 
         # Plot angles and magnitudes
@@ -227,8 +227,8 @@ if __name__ == '__main__':
         x_obstacle, y_obstacle = 0.0, 0.0
         alpha_obstacle, a_obstacle, b_obstacle = 1.0, 1e3, 2e3
 
-        p = -alpha_obstacle * np.exp(-((x - x_obstacle)**2 / a_obstacle
-                                       + (y - y_obstacle)**2 / b_obstacle))
+        p = -alpha_obstacle * np.exp(-((x - x_obstacle) ** 2 / a_obstacle
+                                       + (y - y_obstacle) ** 2 / b_obstacle))
 
         # For the absolute values of "dx" and "dy" to mean anything, we'll need to
         # specify the "cellsize" of our grid.  For purely visual purposes, though,
@@ -262,60 +262,55 @@ if __name__ == '__main__':
         (u, v) = pol2cart(magnitude, angles)
         (x, y) = xy_coords()
 
-
-        u = u*100
-        v = v*100
+        u = u * 100
+        v = v * 100
 
         # print(np.max(angles))
 
-        ax.quiver(x, y, u, v, color='w') # ), scale_unit="inches", scale=0.5)
+        ax.quiver(x, y, u, v, color='w')  # ), scale_unit="inches", scale=0.5)
         fig.colorbar(im)
         ax.set(aspect=1, title='Quiver Plot')
         plt.show()
 
 
-
-
-    #------MAIN------
+    # ------MAIN------
     # Load datasets
     img_size = (300, 400)
     base_folder = "./data/"
     # workaround
     if not os.path.isdir(base_folder):
         base_folder = "." + base_folder
-    train_file = "Allogymnopleuri_#05" # to choose all -> "combined"
+    train_file = "Allogymnopleuri_#05"  # to choose all -> "combined"
     test_file = "Allogymnopleuri_#05"
-    train_set, val_set,  test_set = load_data(train_file, test_file)
+    train_set, val_set, test_set = load_data(train_file, test_file)
     model_file = train_file + "_model.pt"
-    if(len(sys.argv) == 4):
+    if (len(sys.argv) == 4):
         model_file = train_file + "_" + sys.argv[3] + ".pt"
-
 
     # Setup net, loss function, optimizer and hyper parameters
     start_lr = 0.01
     epoch_size = 3
-    if(len(sys.argv) > 2 and sys.argv[1] == "train"):
+    if (len(sys.argv) > 2 and sys.argv[1] == "train"):
         epoch_size = (int)(sys.argv[2])
     batch_size = 10
     test_image = 70
-    if(len(sys.argv) > 2 and sys.argv[1] == "test"):
+    if (len(sys.argv) > 2 and sys.argv[1] == "test"):
         test_image = (int)(sys.argv[2])
     # magnitude
     criterion1 = F1Loss()
     # angle
     criterion2 = Angle_Loss()
     net = Net()
-    gpu_no =  0 # Set to False for cpu-version
+    gpu_no = 0  # Set to False for cpu-version
 
     # test param
-    tresh = 0.0
+    tresh = 0.8
 
-
-    if(len(sys.argv) == 1):
+    if (len(sys.argv) == 1):
         train(net)
         test(net)
-    elif(sys.argv[1] == "train"):
+    elif (sys.argv[1] == "train"):
         train(net)
-    elif(sys.argv[1] == "test"):
+    elif (sys.argv[1] == "test"):
         load(net)
         test(net)
