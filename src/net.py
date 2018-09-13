@@ -248,7 +248,7 @@ if __name__ == '__main__':
 
             return x, y
 
-        magnitude[magnitude < tresh] = 0
+        magnitude[magnitude < thresh] = 0
         (u, v) = pol2cart(magnitude, angles)
         (x, y) = xy_coords()
 
@@ -286,12 +286,12 @@ if __name__ == '__main__':
     # magnitude
     criterion1 = F1Loss()
     # angle
-    criterion2 = nn.SmoothL1Loss()
+    criterion2 = Angle_Loss()
     net = Net()
     gpu_no = 0  # Set to False for cpu-version
 
-    # test param
-    tresh = 0.8
+    # Magnitude Threshold param
+    thresh = 0.8
 
     if (len(sys.argv) == 1):
         train(net)
