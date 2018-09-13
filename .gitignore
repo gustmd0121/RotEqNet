@@ -76,7 +76,7 @@ fabric.properties
 mnist/*/
 
 # Model
-*.pt
+src/*.pt
 
 # Data Folder
 data/**
