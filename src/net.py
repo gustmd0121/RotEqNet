@@ -10,7 +10,7 @@ import random
 from torchvision import transforms
 import os
 import sys
-
+from random import randint
 # Local imports
 # Layers
 from framework.layers import RotConv
@@ -131,8 +131,14 @@ if __name__ == '__main__':
         mask_data = np.load(base_folder + test + "/" + test + "_masks.npz")
         mask_data = np.split(mask_data['beetle'], mask_data['beetle'].shape[2], 2)
 
-        train_data = list(zip(imgs[:-2], mask_data[:-2]))
-        test_data = list(zip(imgs[-2:], mask_data[-2:]))
+        first_rand = 30 #randint(0, len(imgs)-1)
+        second_rand = 42 #randint(0, len(imgs)-1)
+
+        test_data = list(zip([imgs[first_rand], imgs[second_rand]], [mask_data[first_rand], mask_data[second_rand]]))
+        del imgs[first_rand]
+        del imgs[second_rand]
+
+        train_data = list(zip(imgs, mask_data))
 
         return train_data, train_data, test_data
 
@@ -223,7 +229,7 @@ if __name__ == '__main__':
     if (len(sys.argv) > 2 and sys.argv[1] == "test"):
         test_image = (int)(sys.argv[2])
 
-    criterion = F1Loss()
+    criterion = nn.BCELoss()
     net = Net()
     gpu_no = 0  # Set to False for cpu-version
 
