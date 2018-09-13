@@ -45,13 +45,10 @@ class RotConv(nn.Module):
 
             self.angle_tensors.append(Variable(torch.FloatTensor(np.array([angle / 180. * np.pi]))))
 
+        self.weight1 = Parameter(torch.Tensor(out_channels, in_channels, *kernel_size))
+        # If input is vector field, we have two filters (one for each component)
         if self.mode == 2:
-            # If input is vector field, we have two filters (one for each component)
-            self.weight1 = Parameter(torch.Tensor(out_channels, in_channels, *kernel_size))
             self.weight2 = Parameter(torch.Tensor(out_channels, in_channels, *kernel_size))
-        else:
-            # Otherwise input is a 2D picture, just need one filter
-            self.weight1 = Parameter(torch.Tensor(out_channels, 1, *kernel_size))
 
         self.reset_parameters()
 
@@ -83,7 +80,6 @@ class RotConv(nn.Module):
     def forward(self, input):
         outputs = []
         if self.mode == 1:
-            input.unsqueeze_(1)
             outputs = []
 
             # Loop through the different filter-transformations

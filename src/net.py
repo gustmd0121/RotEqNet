@@ -9,20 +9,17 @@ from torch.autograd import Variable
 import random
 from torchvision import transforms
 import os
-import math
-from math import hypot
-import matplotlib.pyplot as plt
 import sys
 
 # Local imports
 # Layers
 from framework.layers import RotConv
 from framework.layers import VectorUpsample
-from framework.layers import VectorToMagnitude
+from framework.layers import ReturnU
 from framework.layers import VectorBatchNorm
 from framework.layers import SpatialPooling
 from framework.layers import OrientationPooling
-from framework.loss import F1Loss, Angle_Loss
+from framework.loss import F1Loss
 # Utils
 from framework.utils.utils import *
 
@@ -40,48 +37,43 @@ if __name__ == '__main__':
         def __init__(self):
             super(Net, self).__init__()
 
+            filter_size = 9
+
             self.main = nn.Sequential(
-                # 300x400
-                RotConv(1, 4, [9, 9], 1, 9 // 2, n_angles=17, mode=1),
+
+                RotConv(1, 8, [filter_size, filter_size], 1, filter_size // 2, n_angles=17, mode=1),
                 OrientationPooling(),
-                VectorBatchNorm(4),
                 SpatialPooling(2),
 
-                # 150x200
-                RotConv(4, 8, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
+                RotConv(8, 12, [filter_size, filter_size], 1, filter_size // 2, n_angles=17, mode=2),
+                OrientationPooling(),
+                SpatialPooling(2),
+
+                RotConv(12, 8, [filter_size, filter_size], 1, filter_size // 2, n_angles=17, mode=2),
                 OrientationPooling(),
                 VectorBatchNorm(8),
-                SpatialPooling(2),
+                VectorUpsample(scale_factor=2),
 
-                # 75x100
-                RotConv(8, 4, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
+                RotConv(8, 4, [filter_size, filter_size], 1, filter_size // 2, n_angles=17, mode=2),
                 OrientationPooling(),
                 VectorBatchNorm(4),
                 VectorUpsample(scale_factor=2),
 
-                # 150x200
-                RotConv(4, 2, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
+                RotConv(4, 2, [filter_size, filter_size], 1, filter_size // 2, n_angles=17, mode=2),
                 OrientationPooling(),
                 VectorBatchNorm(2),
+
+                RotConv(2, 1, [filter_size, filter_size], 1, filter_size // 2, n_angles=17, mode=2),
+                OrientationPooling(),
                 VectorUpsample(size=img_size),
 
-                # 300x400
-                RotConv(2, 1, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
-                OrientationPooling(),
-
-                RotConv(1, 1, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
-                OrientationPooling(),
-
-                VectorToMagnitude()
+                ReturnU()
             )
 
         def forward(self, x):
             x = self.main(x)
-            # magnitude
-            y = F.relu(x[0])
-            # angle
-            z = F.relu(x[1])
-            return (y, z)
+            x = F.sigmoid(x)
+            return x
 
 
     def adjust_learning_rate(optimizer, epoch):
@@ -107,13 +99,15 @@ if __name__ == '__main__':
 
     def getBatch(dataset):
         """ Collect a batch of samples from list """
+
         # Make batch
         data = []
         labels = []
         for sample_no in range(batch_size):
             tmp = dataset.pop()  # Get top element and remove from list
             img = tmp[0].astype('float32').squeeze()
-            data.append(np.expand_dims(img, 0))
+
+            data.append(np.expand_dims(np.expand_dims(img, 0), 0))
             labels.append(tmp[1].squeeze())
         data = np.concatenate(data, 0)
         labels = np.array(labels, 'float32')
@@ -128,28 +122,19 @@ if __name__ == '__main__':
 
 
     def load_data(train, test):
-        # trainfiles
         imgs = np.load(base_folder + train + "/" + train + "_input.npz")['data']
+        imgs = np.split(imgs, imgs.shape[0], 0)
+
         for i in range(len(imgs)):
             imgs[i] = imgs[i] / 255 - 0.5
 
-        np.swapaxes(imgs, 0, 1)
-        mask_data = np.load(base_folder + train + "/" + train + "_masks.npz")['beetle']
-        for i in range(len(mask_data)):
-            mask_data[i][1] = mask_data[i][1] * math.pi / 180
-        train = list(zip(imgs, mask_data))
+        mask_data = np.load(base_folder + test + "/" + test + "_masks.npz")
+        mask_data = np.split(mask_data['beetle'], mask_data['beetle'].shape[2], 2)
 
-        # testfiles
-        imgs = np.load(base_folder + test + "/" + test + "_input.npz")['data']
-        for i in range(len(imgs)):
-            imgs[i] = imgs[i] / 255 - 0.5
+        train_data = list(zip(imgs[:-2], mask_data[:-2]))
+        test_data = list(zip(imgs[-2:], mask_data[-2:]))
 
-        mask_data = np.load(base_folder + test + "/" + test + "_masks.npz")['beetle']
-        for i in range(len(mask_data)):
-            mask_data[i][1] = mask_data[i][1] * math.pi / 180
-        test = list(zip(imgs, mask_data))
-
-        return train, train, test
+        return train_data, train_data, test_data
 
 
     def train(net):
@@ -162,7 +147,7 @@ if __name__ == '__main__':
         for epoch_no in range(epoch_size):
 
             # Random order for each epoch
-            train_set_for_epoch = train_set[:]   # Make a copy
+            train_set_for_epoch = train_set[:]  # Make a copy
             random.shuffle(train_set_for_epoch)  # Shuffle the copy
 
             # Training
@@ -173,10 +158,8 @@ if __name__ == '__main__':
                 optimizer.zero_grad()
 
                 data, labels = getBatch(train_set_for_epoch)
-                out1, out2 = net(data)
-                loss1 = criterion1(out1.squeeze(1), labels[:, 0, :, :])
-                loss2 = criterion2(out2.squeeze(1), labels[:, 1, :, :])
-                loss = loss1 + loss2 / (2 * math.pi)
+                out = net(data)
+                loss = criterion(out, labels)
                 loss.backward()
 
                 optimizer.step()
@@ -185,9 +168,7 @@ if __name__ == '__main__':
                 if batch_no % 10 == 0:
                     print('Train', 'epoch:', epoch_no,
                           ' batch:', batch_no,
-                          ' loss:', loss.data.cpu().numpy(),
-                          ' loss1:', loss1.data.cpu().numpy(),
-                          ' loss2:', loss2.data.cpu().numpy(),
+                          ' loss:', loss.data.cpu().numpy()
                           )
 
             adjust_learning_rate(optimizer, epoch_no)
@@ -201,76 +182,21 @@ if __name__ == '__main__':
 
 
     def test(net):
-        net.eval()
         loader = transforms.Compose([transforms.ToTensor()])
-        image = loader(np.expand_dims(test_set[test_image][0][0], 2)).float()
+        image = Image.fromarray(test_set[test_image][0][0, :, :])
+        image = loader(image).float()
+        image = Variable(image, requires_grad=True)
+        image = image.unsqueeze(0)
         image = image.cuda()
         xyz = net(image)
-        magnitude = xyz[0].data.cpu().numpy().squeeze(0).squeeze(0)
-        angles = xyz[1].data.cpu().numpy().squeeze(0).squeeze(0)
-        print("Angle:", str(get_average_angle(magnitude, angles) * 180 / math.pi))
-        print("Real Angle:", np.max(test_set[test_image][1][1]) * 180 / math.pi)
-        # print("Angle, x=138:", test_set[test_image][1][1][138]*180/math.pi)
-        # print("Real Angle, x=138:", angles[138]*180/math.pi)
-        magnitude = np.squeeze(magnitude)
-        mag = Image.fromarray(((magnitude) * 255))
-        print(mag.show(title='net'))
-        # tresh = Image.fromarray(treshhold(magnitude, 0.15)*255)
-        # print(tresh.show(title='tresh'))
-        orig = Image.fromarray((test_set[test_image][0][0] + 0.5) * 255)
-        print(orig.show(title='orig'))
-
-        # Plot angles and magnitudes
-        # Set limits and number of points in grid
-        y, x = np.mgrid[0:len(magnitude[0]):100, 0:len(magnitude[0]):100]
-
-        x_obstacle, y_obstacle = 0.0, 0.0
-        alpha_obstacle, a_obstacle, b_obstacle = 1.0, 1e3, 2e3
-
-        p = -alpha_obstacle * np.exp(-((x - x_obstacle) ** 2 / a_obstacle
-                                       + (y - y_obstacle) ** 2 / b_obstacle))
-
-        # For the absolute values of "dx" and "dy" to mean anything, we'll need to
-        # specify the "cellsize" of our grid.  For purely visual purposes, though,
-        # we could get away with just "dy, dx = np.gradient(p)".
-
-        skip = (slice(None, None, 5), slice(None, None, 5))
-
-        fig, ax = plt.subplots()
-        im = ax.imshow(magnitude)
-
-        def pol2cart(magnitude_map, angle_map):
-            # This is equivalent to switching u and v in the quiver function
-            angle_map_zero_up = ((2 * math.pi - angle_map) + 0.5 * math.pi) % (2 * math.pi)
-            u = magnitude_map * np.cos(angle_map_zero_up)
-            v = magnitude_map * np.sin(angle_map_zero_up)
-            return u, v
-
-        def xy_coords():
-            x_single_col = np.array(list(range(0, img_size[1])))
-            y_single_row = np.array(list(range(0, img_size[0])))
-
-            x = np.tile(x_single_col, (img_size[0], 1))
-            y = np.tile(y_single_row, (img_size[1], 1))
-            y = y.transpose()
-
-            return x, y
-
-        # ax.quiver(x[skip], y[skip], angles= angles, color = 'w')
-
-        magnitude[magnitude < tresh] = 0
-        (u, v) = pol2cart(magnitude, angles)
-        (x, y) = xy_coords()
-
-        u = u * 100
-        v = v * 100
-
-        # print(np.max(angles))
-
-        ax.quiver(x, y, u, v, color='w')  # ), scale_unit="inches", scale=0.5)
-        fig.colorbar(im)
-        ax.set(aspect=1, title='Quiver Plot')
-        plt.show()
+        xyz = xyz.data.cpu().numpy()
+        xyz = np.squeeze(xyz)
+        xyz = Image.fromarray(xyz[:, :] * 255)
+        orig = Image.fromarray((test_set[test_image][0][0, :, :] + 0.5) * 255)
+        mask = Image.fromarray(test_set[test_image][1][:, :, 0] * 255)
+        xyz.show(title='net')
+        mask.show(title='mask')
+        orig.show(title='orig')
 
 
     # ------MAIN------
@@ -280,7 +206,7 @@ if __name__ == '__main__':
     # workaround
     if not os.path.isdir(base_folder):
         base_folder = "." + base_folder
-    train_file = "Allogymnopleuri_#05"  # to choose all -> "combined"
+    train_file = "Allogymnopleuri_#05"
     test_file = "Allogymnopleuri_#05"
     train_set, val_set, test_set = load_data(train_file, test_file)
     model_file = train_file + "_model.pt"
@@ -289,22 +215,17 @@ if __name__ == '__main__':
 
     # Setup net, loss function, optimizer and hyper parameters
     start_lr = 0.01
-    epoch_size = 3
+    epoch_size = 2
     if (len(sys.argv) > 2 and sys.argv[1] == "train"):
         epoch_size = (int)(sys.argv[2])
-    batch_size = 10
-    test_image = 70
+    batch_size = 5
+    test_image = 0
     if (len(sys.argv) > 2 and sys.argv[1] == "test"):
         test_image = (int)(sys.argv[2])
-    # magnitude
-    criterion1 = F1Loss()
-    # angle
-    criterion2 = Angle_Loss()
+
+    criterion = F1Loss()
     net = Net()
     gpu_no = 0  # Set to False for cpu-version
-
-    # test param
-    tresh = 0.8
 
     if (len(sys.argv) == 1):
         train(net)
