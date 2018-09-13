@@ -10,7 +10,6 @@ import random
 from torchvision import transforms
 import os
 import math
-from math import hypot
 import matplotlib.pyplot as plt
 import sys
 
