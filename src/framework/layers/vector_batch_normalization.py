@@ -63,6 +63,8 @@ class VectorBatchNorm(nn.Module):
             self.running_var += self.momentum * std.data ** 2
 
             # compute output
+            # Variable around alpha improves in this case the net performance
+            # Variable makes alpha relevant for Autograd
             u = input[0] * Variable(alpha)
             v = input[1] * Variable(alpha)
 

@@ -178,11 +178,11 @@ if __name__ == '__main__':
                           )
 
             adjust_learning_rate(optimizer, epoch_no)
-            torch.save(net.state_dict(), model_file)
+            torch.save(net.state_dict(), os.path.join(models_folder, model_file))
 
 
     def load(net):
-        net.load_state_dict(torch.load(model_file))
+        net.load_state_dict(torch.load(os.path.join(models_folder, model_file)))
         if type(gpu_no) == int:
             net.cuda()
 
@@ -209,9 +209,11 @@ if __name__ == '__main__':
     # Load datasets
     img_size = (300, 400)
     base_folder = "./data/"
+    models_folder = "./models"
     # workaround
     if not os.path.isdir(base_folder):
         base_folder = "." + base_folder
+        models_folder = "." + models_folder
     train_file = "Allogymnopleuri_#05"
     test_file = "Allogymnopleuri_#05"
     train_set, val_set, test_set = load_data(train_file, test_file)
@@ -229,7 +231,7 @@ if __name__ == '__main__':
     if (len(sys.argv) > 2 and sys.argv[1] == "test"):
         test_image = (int)(sys.argv[2])
 
-    criterion = nn.BCELoss()
+    criterion = F1Loss()
     net = Net()
     gpu_no = 0  # Set to False for cpu-version
 
