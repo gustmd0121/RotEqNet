@@ -63,8 +63,8 @@ class VectorBatchNorm(nn.Module):
             self.running_var += self.momentum * std.data ** 2
 
             # compute output
-            u = input[0] * Variable(alpha)
-            v = input[1] * Variable(alpha)
+            u = input[0] * alpha
+            v = input[1] * alpha
 
         else:
             alpha = self.weight.data / torch.sqrt(self.running_var + self.eps)

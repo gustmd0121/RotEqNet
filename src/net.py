@@ -39,40 +39,41 @@ if __name__ == '__main__':
     class Net(nn.Module):
         def __init__(self):
             super(Net, self).__init__()
+            filter_size = 9
 
             self.main = nn.Sequential(
                 # 300x400
-                RotConv(1, 4, [9, 9], 1, 9 // 2, n_angles=17, mode=1),
+                RotConv(1, 4, [filter_size, filter_size], 1, filter_size // 2, n_angles=17, mode=1),
                 OrientationPooling(),
                 VectorBatchNorm(4),
                 SpatialPooling(2),
 
                 # 150x200
-                RotConv(4, 8, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
+                RotConv(4, 8, [filter_size, filter_size], 1, filter_size // 2, n_angles=17, mode=2),
                 OrientationPooling(),
                 VectorBatchNorm(8),
                 SpatialPooling(2),
 
                 # 75x100
-                RotConv(8, 4, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
+                RotConv(8, 4, [filter_size, filter_size], 1, filter_size // 2, n_angles=17, mode=2),
                 OrientationPooling(),
                 VectorBatchNorm(4),
                 VectorUpsample(scale_factor=2),
 
                 # 150x200
-                RotConv(4, 2, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
+                RotConv(4, 2, [filter_size, filter_size], 1, filter_size // 2, n_angles=17, mode=2),
                 OrientationPooling(),
                 VectorBatchNorm(2),
                 VectorUpsample(size=img_size),
 
                 # 300x400
-                RotConv(2, 1, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
+                RotConv(2, 1, [filter_size, filter_size], 1, filter_size // 2, n_angles=17, mode=2),
                 OrientationPooling(),
 
-                RotConv(1, 1, [9, 9], 1, 9 // 2, n_angles=17, mode=2),
+                RotConv(1, 1, [filter_size, filter_size], 1, filter_size // 2, n_angles=17, mode=2),
                 OrientationPooling(),
 
-                VectorToMagnitude()
+                VectorToMagnitude(0.99999)
             )
 
         def forward(self, x):
@@ -80,7 +81,7 @@ if __name__ == '__main__':
             # magnitude
             y = F.relu(x[0])
             # angle
-            z = F.relu(x[1])
+            z = F.relu6(x[1])
             return (y, z)
 
 
@@ -191,11 +192,11 @@ if __name__ == '__main__':
                           )
 
             adjust_learning_rate(optimizer, epoch_no)
-            torch.save(net.state_dict(), model_file)
+            torch.save(net.state_dict(), os.path.join(models_folder, model_file))
 
 
     def load(net):
-        net.load_state_dict(torch.load(model_file))
+        net.load_state_dict(torch.load(os.path.join(models_folder, model_file)))
         if type(gpu_no) == int:
             net.cuda()
 
@@ -277,9 +278,11 @@ if __name__ == '__main__':
     # Load datasets
     img_size = (300, 400)
     base_folder = "./data/"
+    models_folder = "./models"
     # workaround
     if not os.path.isdir(base_folder):
         base_folder = "." + base_folder
+        models_folder = "." + models_folder
     train_file = "Allogymnopleuri_#05"  # to choose all -> "combined"
     test_file = "Allogymnopleuri_#05"
     train_set, val_set, test_set = load_data(train_file, test_file)
@@ -299,7 +302,7 @@ if __name__ == '__main__':
     # magnitude
     criterion1 = F1Loss()
     # angle
-    criterion2 = Angle_Loss()
+    criterion2 = nn.SmoothL1Loss()
     net = Net()
     gpu_no = 0  # Set to False for cpu-version
 
