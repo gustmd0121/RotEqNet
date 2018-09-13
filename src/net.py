@@ -150,6 +150,16 @@ if __name__ == '__main__':
             mask_data[i][1] = mask_data[i][1] * math.pi / 180
         test = list(zip(imgs, mask_data))
 
+        # Temporary workaround to split data into train and test
+        first_rand = 30  # randint(0, len(imgs)-1)
+        second_rand = 42  # randint(0, len(imgs)-1)
+
+        test = list(zip([imgs[first_rand], imgs[second_rand]], [mask_data[first_rand], mask_data[second_rand]]))
+        np.delete(imgs, first_rand)
+        np.delete(imgs, second_rand)
+
+        train = list(zip(imgs, mask_data))
+
         return train, train, test
 
 
@@ -208,35 +218,16 @@ if __name__ == '__main__':
         image = image.cuda()
         xyz = net(image)
         magnitude = xyz[0].data.cpu().numpy().squeeze(0).squeeze(0)
-        angles = xyz[1].data.cpu().numpy().squeeze(0).squeeze(0)
-        print("Angle:", str(get_average_angle(magnitude, angles) * 180 / math.pi))
-        print("Real Angle:", np.max(test_set[test_image][1][1]) * 180 / math.pi)
-        # print("Angle, x=138:", test_set[test_image][1][1][138]*180/math.pi)
-        # print("Real Angle, x=138:", angles[138]*180/math.pi)
         magnitude = np.squeeze(magnitude)
-        mag = Image.fromarray(((magnitude) * 255))
-        print(mag.show(title='net'))
-        # tresh = Image.fromarray(treshhold(magnitude, 0.15)*255)
-        # print(tresh.show(title='tresh'))
+        angles = xyz[1].data.cpu().numpy().squeeze(0).squeeze(0)
+
         orig = Image.fromarray((test_set[test_image][0][0] + 0.5) * 255)
-        print(orig.show(title='orig'))
+        orig.show(title='orig')
 
-        # Plot angles and magnitudes
-        # Set limits and number of points in grid
-        y, x = np.mgrid[0:len(magnitude[0]):100, 0:len(magnitude[0]):100]
+        mag = Image.fromarray(((magnitude) * 255))
+        mag.show(title='net')
 
-        x_obstacle, y_obstacle = 0.0, 0.0
-        alpha_obstacle, a_obstacle, b_obstacle = 1.0, 1e3, 2e3
-
-        p = -alpha_obstacle * np.exp(-((x - x_obstacle) ** 2 / a_obstacle
-                                       + (y - y_obstacle) ** 2 / b_obstacle))
-
-        # For the absolute values of "dx" and "dy" to mean anything, we'll need to
-        # specify the "cellsize" of our grid.  For purely visual purposes, though,
-        # we could get away with just "dy, dx = np.gradient(p)".
-
-        skip = (slice(None, None, 5), slice(None, None, 5))
-
+        # Heatmap and Angle Map visualization
         fig, ax = plt.subplots()
         im = ax.imshow(magnitude)
 
@@ -257,20 +248,13 @@ if __name__ == '__main__':
 
             return x, y
 
-        # ax.quiver(x[skip], y[skip], angles= angles, color = 'w')
-
         magnitude[magnitude < tresh] = 0
         (u, v) = pol2cart(magnitude, angles)
         (x, y) = xy_coords()
 
-        u = u * 100
-        v = v * 100
-
-        # print(np.max(angles))
-
-        ax.quiver(x, y, u, v, color='w')  # ), scale_unit="inches", scale=0.5)
+        ax.quiver(x, y, u, v, color='w')
         fig.colorbar(im)
-        ax.set(aspect=1, title='Quiver Plot')
+        ax.set(aspect=1, title='Heatmap and Anglemap')
         plt.show()
 
 
