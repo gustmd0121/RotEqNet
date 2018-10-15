@@ -4,10 +4,6 @@ import torch.nn as nn
 
 
 class F1Loss(nn.Module):
-    """ 
-    F1 loss adapted from keras metric implementation:
-    https://stackoverflow.com/questions/43547402/how-to-calculate-f1-macro-in-keras 
-    """
 
     def __init__(self):
         super(F1Loss, self).__init__()

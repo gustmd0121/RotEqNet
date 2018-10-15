@@ -5,7 +5,6 @@ from torch.nn import functional as F
 
 
 class SpatialPooling(nn.Module):
-    """ Custom Max Pooling for vector fields """
     def __init__(self, kernel_size, stride=None, padding=0, dilation=1,
                  ceil_mode=False):
         super(SpatialPooling, self).__init__()
@@ -22,7 +21,6 @@ class SpatialPooling(nn.Module):
 
         # Magnitude
         p = torch.sqrt(v ** 2 + u ** 2)
-
         # Max pool
         _, max_inds = F.max_pool2d(p, self.kernel_size, self.stride,
                                    self.padding, self.dilation, self.ceil_mode,

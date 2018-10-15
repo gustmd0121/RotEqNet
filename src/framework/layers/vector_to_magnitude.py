@@ -3,13 +3,12 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 import math
+from pprint import pprint
+import numpy as np
 
 class VectorToMagnitude(nn.Module):
-    """ Returns magnitude and angle map (polar coordinates) """
-
-    def __init__(self, tresh):
+    def __init__(self):
         super(VectorToMagnitude, self).__init__()
-        self.tresh = tresh
 
     def forward(self, input):
         u = input[0]
@@ -18,4 +17,4 @@ class VectorToMagnitude(nn.Module):
 
         angle = torch.atan2(u, v) + math.pi
 
-        return p, angle*torch.clamp(F.threshold(p, self.tresh, 0), 0, 1)
+        return p, angle

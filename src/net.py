@@ -10,23 +10,28 @@ import random
 from torchvision import transforms
 import os
 import math
+from math import hypot
 import matplotlib.pyplot as plt
 import sys
-
 # Local imports
 # Layers
-from framework.layers import RotConv
+from framework import RotConv
 from framework.layers import VectorUpsample
 from framework.layers import VectorToMagnitude
 from framework.layers import VectorBatchNorm
 from framework.layers import SpatialPooling
 from framework.layers import OrientationPooling
+from framework.layers import Mapping
 from framework.loss import F1Loss, Angle_Loss
 # Utils
 from framework.utils.utils import *
 
+# !/usr/bin/env python
+__author__ = "Anders U. Waldeland"
+__email__ = "anders@nr.no"
+
 """
-An implementation to detect Dung Beetles and their orientation based on the concept proposed in:
+A reproduction of the MNIST-classification network described in:
 Rotation equivariant vector field networks (ICCV 2017)
 Diego Marcos, Michele Volpi, Nikos Komodakis, Devis Tuia
 https://arxiv.org/abs/1612.09346
@@ -38,59 +43,68 @@ if __name__ == '__main__':
     class Net(nn.Module):
         def __init__(self):
             super(Net, self).__init__()
-            filter_size = 9
 
             self.main = nn.Sequential(
-                # 300x400
-                RotConv(1, 4, [filter_size, filter_size], 1, filter_size // 2, n_angles=17, mode=1),
+                # 256x256
+                RotConv(1, 4, [9, 9], 1, 9 // 2, n_angles=21, mode=1),
                 OrientationPooling(),
                 VectorBatchNorm(4),
                 SpatialPooling(2),
 
-                # 150x200
-                RotConv(4, 8, [filter_size, filter_size], 1, filter_size // 2, n_angles=17, mode=2),
+                # 128x128
+                RotConv(4, 8, [9, 9], 1, 9 // 2, n_angles=21, mode=2),
                 OrientationPooling(),
                 VectorBatchNorm(8),
                 SpatialPooling(2),
 
-                # 75x100
-                RotConv(8, 4, [filter_size, filter_size], 1, filter_size // 2, n_angles=17, mode=2),
+                # 64x64
+                RotConv(8, 4, [9, 9], 1, 9 // 2, n_angles=21, mode=2),
                 OrientationPooling(),
                 VectorBatchNorm(4),
                 VectorUpsample(scale_factor=2),
 
-                # 150x200
-                RotConv(4, 2, [filter_size, filter_size], 1, filter_size // 2, n_angles=17, mode=2),
+                # 128x128
+                RotConv(4, 2, [9, 9], 1, 9 // 2, n_angles=21, mode=2),
                 OrientationPooling(),
                 VectorBatchNorm(2),
                 VectorUpsample(size=img_size),
 
-                # 300x400
-                RotConv(2, 1, [filter_size, filter_size], 1, filter_size // 2, n_angles=17, mode=2),
+                # 256x256
+                RotConv(2, 1, [9, 9], 1, 9 // 2, n_angles=21, mode=2),
                 OrientationPooling(),
 
-                RotConv(1, 1, [filter_size, filter_size], 1, filter_size // 2, n_angles=17, mode=2),
-                OrientationPooling(),
-
-                VectorToMagnitude(0.99999)
             )
 
+            self.fc = nn.Sequential(
+                # 256x256
+                RotConv(1, 15, [25, 25], 1, 25 // 2, n_angles=21, mode=1),
+                OrientationPooling(),
+                SpatialPooling(4),
+
+                # 32x32
+                RotConv(15, 1, [64, 64], 1, 0, n_angles=21, mode=2),
+                OrientationPooling(),
+            )
+            self.hardcoded = nn.Sequential(
+                VectorToMagnitude(),
+            )
+
+            self.toMag = VectorToMagnitude()
+
         def forward(self, x):
+            #TODO: batch!!
             x = self.main(x)
-            # magnitude
-            y = F.relu(x[0])
+            y, a = self.toMag(x)
             # angle
-            z = F.relu6(x[1])
-            return (y, z)
+            z = F.relu(y[0])
+            z = self.fc(z)
+            z, ra = self.toMag(z)
+            ra = ra.squeeze()
+            return y, a, ra
 
 
     def adjust_learning_rate(optimizer, epoch):
-        """
-        Gradually decay learning rate"
-        NOTE: Will be used in future implementation
-        :param optimizer: optimizer which should be used
-        :param epoch: current number of training epoch
-        """""
+        """Gradually decay learning rate"""
         if epoch == 4:
             lr = start_lr / 10
             for param_group in optimizer.param_groups:
@@ -136,7 +150,7 @@ if __name__ == '__main__':
         np.swapaxes(imgs, 0, 1)
         mask_data = np.load(base_folder + train + "/" + train + "_masks.npz")['beetle']
         for i in range(len(mask_data)):
-            mask_data[i][1] = mask_data[i][1] * math.pi / 180
+            mask_data[i][1] = mask_data[i][1]# * math.pi / 180
         train = list(zip(imgs, mask_data))
 
         # testfiles
@@ -146,18 +160,8 @@ if __name__ == '__main__':
 
         mask_data = np.load(base_folder + test + "/" + test + "_masks.npz")['beetle']
         for i in range(len(mask_data)):
-            mask_data[i][1] = mask_data[i][1] * math.pi / 180
+            mask_data[i][1] = mask_data[i][1]# * math.pi / 180
         test = list(zip(imgs, mask_data))
-
-        # Temporary workaround to split data into train and test
-        first_rand = 30  # randint(0, len(imgs)-1)
-        second_rand = 42  # randint(0, len(imgs)-1)
-
-        test = list(zip([imgs[first_rand], imgs[second_rand]], [mask_data[first_rand], mask_data[second_rand]]))
-        np.delete(imgs, first_rand)
-        np.delete(imgs, second_rand)
-
-        train = list(zip(imgs, mask_data))
 
         return train, train, test
 
@@ -167,12 +171,15 @@ if __name__ == '__main__':
         if type(gpu_no) == int:
             net.cuda(gpu_no)
 
-        optimizer = optim.Adam(net.parameters(), lr=start_lr)  # , weight_decay=0.01)
+        optimizer = optim.Adam(
+            [{'params': net.main.parameters()}, {'params': net.fc.parameters()}, {'params': net.toMag.parameters()},
+             {'params': net.hardcoded.parameters(), 'lr': 0}], lr=start_lr)  # , weight_decay=0.01)
+        # best_acc = 0
 
         for epoch_no in range(epoch_size):
 
             # Random order for each epoch
-            train_set_for_epoch = train_set[:]   # Make a copy
+            train_set_for_epoch = train_set[:]  # Make a copy
             random.shuffle(train_set_for_epoch)  # Shuffle the copy
 
             # Training
@@ -183,10 +190,25 @@ if __name__ == '__main__':
                 optimizer.zero_grad()
 
                 data, labels = getBatch(train_set_for_epoch)
-                out1, out2 = net(data)
+                out1, out2, out3 = net(data)
+
+                # angle mapping
+                dir = torch.max(labels[: , 1, :, :]).data.cpu().numpy()
+                for i in range(0,21):
+                    if abs(i * (360/(21-1)) - dir) <= (360/((21-1)*2)):
+                        a = i
+
+                # angle radiant
+                a = a * math.pi / 180
+                a = torch.tensor(a)
+
+                # angle gpu
+                a = a.cuda()
+                a = a.float()
+
                 loss1 = criterion1(out1.squeeze(1), labels[:, 0, :, :])
-                loss2 = criterion2(out2.squeeze(1), labels[:, 1, :, :])
-                loss = loss1 + loss2 / (2 * math.pi)
+                loss2 = criterion2(out3.squeeze().unsqueeze(0), a.unsqueeze(0))
+                loss = loss1 + loss2  # / (2 * math.pi)
                 loss.backward()
 
                 optimizer.step()
@@ -201,11 +223,11 @@ if __name__ == '__main__':
                           )
 
             adjust_learning_rate(optimizer, epoch_no)
-            torch.save(net.state_dict(), os.path.join(models_folder, model_file))
+            torch.save(net.state_dict(), model_file)
 
 
     def load(net):
-        net.load_state_dict(torch.load(os.path.join(models_folder, model_file)))
+        net.load_state_dict(torch.load(model_file))
         if type(gpu_no) == int:
             net.cuda()
 
@@ -217,16 +239,38 @@ if __name__ == '__main__':
         image = image.cuda()
         xyz = net(image)
         magnitude = xyz[0].data.cpu().numpy().squeeze(0).squeeze(0)
-        magnitude = np.squeeze(magnitude)
         angles = xyz[1].data.cpu().numpy().squeeze(0).squeeze(0)
-
-        orig = Image.fromarray((test_set[test_image][0][0] + 0.5) * 255)
-        orig.show(title='orig')
-
+        angles2 = xyz[2].data.cpu().numpy().squeeze(0).squeeze(0)
+        print("Angle:", angles2 * 180 / math.pi)
+        print("Real Angle:", np.max(test_set[test_image][1][1]))
+        # print("Angle, x=138:", test_set[test_image][1][1][138]*180/math.pi)
+        # print("Real Angle, x=138:", angles[138]*180/math.pi)
+        magnitude = np.squeeze(magnitude)
         mag = Image.fromarray(((magnitude) * 255))
-        mag.show(title='net')
+        print(mag.show(title='net'))
+        # tresh = Image.fromarray(treshhold(magnitude, 0.15)*255)
+        # print(tresh.show(title='tresh'))
+        orig = Image.fromarray((test_set[test_image][0][0] + 0.5) * 255)
+        print(orig.show(title='orig'))
 
-        # Heatmap and Angle Map visualization
+        exit()
+
+        # Plot angles and magnitudes
+        # Set limits and number of points in grid
+        y, x = np.mgrid[0:len(magnitude[0]):100, 0:len(magnitude[0]):100]
+
+        x_obstacle, y_obstacle = 0.0, 0.0
+        alpha_obstacle, a_obstacle, b_obstacle = 1.0, 1e3, 2e3
+
+        p = -alpha_obstacle * np.exp(-((x - x_obstacle) ** 2 / a_obstacle
+                                       + (y - y_obstacle) ** 2 / b_obstacle))
+
+        # For the absolute values of "dx" and "dy" to mean anything, we'll need to
+        # specify the "cellsize" of our grid.  For purely visual purposes, though,
+        # we could get away with just "dy, dx = np.gradient(p)".
+
+        skip = (slice(None, None, 5), slice(None, None, 5))
+
         fig, ax = plt.subplots()
         im = ax.imshow(magnitude)
 
@@ -247,25 +291,30 @@ if __name__ == '__main__':
 
             return x, y
 
-        magnitude[magnitude < thresh] = 0
+        # ax.quiver(x[skip], y[skip], angles= angles, color = 'w')
+
+        magnitude[magnitude < tresh] = 0
         (u, v) = pol2cart(magnitude, angles)
         (x, y) = xy_coords()
 
-        ax.quiver(x, y, u, v, color='w')
+        u = u * 100
+        v = v * 100
+
+        # print(np.max(angles))
+
+        ax.quiver(x, y, u, v, color='w')  # ), scale_unit="inches", scale=0.5)
         fig.colorbar(im)
-        ax.set(aspect=1, title='Heatmap and Anglemap')
+        ax.set(aspect=1, title='Quiver Plot')
         plt.show()
 
 
     # ------MAIN------
     # Load datasets
-    img_size = (300, 400)
+    img_size = (256, 256)
     base_folder = "./data/"
-    models_folder = "./models"
     # workaround
     if not os.path.isdir(base_folder):
         base_folder = "." + base_folder
-        models_folder = "." + models_folder
     train_file = "Allogymnopleuri_#05"  # to choose all -> "combined"
     test_file = "Allogymnopleuri_#05"
     train_set, val_set, test_set = load_data(train_file, test_file)
@@ -278,19 +327,19 @@ if __name__ == '__main__':
     epoch_size = 3
     if (len(sys.argv) > 2 and sys.argv[1] == "train"):
         epoch_size = (int)(sys.argv[2])
-    batch_size = 10
+    batch_size = 2
     test_image = 70
     if (len(sys.argv) > 2 and sys.argv[1] == "test"):
         test_image = (int)(sys.argv[2])
     # magnitude
     criterion1 = F1Loss()
     # angle
-    criterion2 = Angle_Loss()
+    criterion2 = nn.MSELoss()
     net = Net()
     gpu_no = 0  # Set to False for cpu-version
 
-    # Magnitude Threshold param
-    thresh = 0.8
+    # test param
+    tresh = 0.0
 
     if (len(sys.argv) == 1):
         train(net)
